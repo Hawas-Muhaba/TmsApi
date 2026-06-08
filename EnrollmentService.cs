@@ -20,6 +20,19 @@ public class EnrollmentService: IEnrollmentService
 
     public Task<EnrollmentRecord> EnrollAsync (string studentId, string courseCode)
     {
+        //check for duplicates
+        var existing = _store.Values
+            .FirstOrDefault(e=>e.StudentId == studentId && e.CourseCode == courseCode);
+        
+        if(existing is not null)
+        {
+            _logger.LogWarning(
+                "Duplicate enrollment attempt {StudentId} already in {CourseCode} (record {EnrollmentId})",
+                studentId, courseCode, existing.Id
+            );
+
+            return Task.FromResult(existing);
+        }
         var id = Guid.NewGuid().ToString("N")[..8];
         var record = new EnrollmentRecord(id, studentId, courseCode, DateTime.UtcNow);
         _store[id] = record;
