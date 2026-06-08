@@ -1,20 +1,24 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\CSUG\\Documents\\tms-web\\TmsApi\\TmsApi.csproj": {}
+    "C:\\Users\\hp\\Documents\\Projects\\New folder\\TmsApi\\TmsApi\\TmsApi.csproj": {}
   },
   "projects": {
-    "C:\\Users\\CSUG\\Documents\\tms-web\\TmsApi\\TmsApi.csproj": {
+    "C:\\Users\\hp\\Documents\\Projects\\New folder\\TmsApi\\TmsApi\\TmsApi.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\CSUG\\Documents\\tms-web\\TmsApi\\TmsApi.csproj",
+        "projectUniqueName": "C:\\Users\\hp\\Documents\\Projects\\New folder\\TmsApi\\TmsApi\\TmsApi.csproj",
         "projectName": "TmsApi",
-        "projectPath": "C:\\Users\\CSUG\\Documents\\tms-web\\TmsApi\\TmsApi.csproj",
-        "packagesPath": "C:\\Users\\CSUG\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\CSUG\\Documents\\tms-web\\TmsApi\\obj\\",
+        "projectPath": "C:\\Users\\hp\\Documents\\Projects\\New folder\\TmsApi\\TmsApi\\TmsApi.csproj",
+        "packagesPath": "C:\\Users\\hp\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\hp\\Documents\\Projects\\New folder\\TmsApi\\TmsApi\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
         "configFilePaths": [
-          "C:\\Users\\CSUG\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "C:\\Users\\hp\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config"
         ],
         "originalTargetFrameworks": [
           "net10.0"
