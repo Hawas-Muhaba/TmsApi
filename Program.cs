@@ -1,49 +1,81 @@
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.OpenApi; // <-- 1. ይህ አዲስ የተጨመረ ነው
+using Scalar.AspNetCore;
 
-var builder = WebApplication.CreateBuilder(args);
-
-builder.Host.UseDefaultServiceProvider(options =>
+public partial class Program
 {
-    options.ValidateScopes = true;
-    options.ValidateOnBuild= true;
-});
+    private static void Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton<EnrollmentWorker>();
-builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
-//services
-builder.Services
-.AddAuthentication("Training")
-.AddScheme<AuthenticationSchemeOptions,
-TrainingAuthHandler>("Training", null);
+        builder.Host.UseDefaultServiceProvider(options =>
+        {
+            options.ValidateScopes = true;
+            options.ValidateOnBuild = true;
+        });
 
-builder.Services.AddOptions<PaymentOptions>()
-    .BindConfiguration("Payments")
-    .ValidateDataAnnotations()
-    .ValidateOnStart();
+        // --- SERVICES SECTION ---
+        builder.Services.AddControllers();
+        builder.Services.AddSingleton<EnrollmentWorker>();
+        builder.Services.AddSingleton<IEnrollmentService, EnrollmentService>();
 
-builder.Services.AddAuthorization();
+        builder.Services
+            .AddAuthentication("Training")
+            .AddScheme<AuthenticationSchemeOptions, TrainingAuthHandler>("Training", null);
 
-var app = builder.Build();
+        builder.Services.AddOptions<PaymentOptions>()
+            .BindConfiguration("Payments")
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
 
-//middleware order
+        builder.Services.AddProblemDetails(); // Exercise 6
+        builder.Services.AddOpenApi();        // Exercise 7
+        builder.Services.AddAuthorization();
 
-app.UseRouting();
-app.UseAuthentication();
-app.UseAuthorization();
-app.MapGet("/api/assessments/results", ()=>Results.Ok(new
-{
-    courseCode = "CS-101",
-    studentId= "S-001",
-    letterGrade = "A"
-})).RequireAuthorization();
-app.MapGet("/api/enrollments/worker-smoke", (EnrollmentWorker worker) =>
-{
-worker.ProcessBatch();
-return Results.Ok("processed");
-});
+        var app = builder.Build();
 
-//protected endpoint
+        // --- MIDDLEWARE SECTION (ቅደም ተከተሉ ተስተካክሏል) ---
 
+        // 1. የ ProblemDetails ኤረር መያዣዎች ሁሌም መጀመሪያ መሆን አለባቸው
+        app.UseExceptionHandler();
+        app.UseStatusCodePages();
 
+        // 2. Routing እና Security
+        app.UseRouting();
+        app.UseAuthentication();
+        app.UseAuthorization();
 
-app.Run();
+        // --- ENDPOINTS SECTION ---
+
+        app.MapGet("/api/assessments/results", () => Results.Ok(new
+        {
+            courseCode = "CS-101",
+            studentId = "S-001",
+            letterGrade = "A"
+        })).RequireAuthorization();
+
+        app.MapGet("/api/enrollments/worker-smoke", (EnrollmentWorker worker) =>
+        {
+            worker.ProcessBatch();
+            return Results.Ok("processed");
+        });
+
+        // Exercise 6: የተስተካከለው የኤረር መሞከሪያ መንገድ (Endpoint)
+        app.MapGet("/api/error", () =>
+        {
+            throw new Exception("Simulated failure for ProblemDetails testing");
+        });
+
+        // Exercise 7: የልማት መሳሪያዎች (Dev Tools Environment Toggle)
+        if (app.Environment.IsDevelopment())
+        {
+            app.MapOpenApi();
+            app.MapScalarApiReference();
+        }
+
+        app.MapControllers();
+
+        // አፕሊኬሽኑን ማስነሻ መስመር
+        app.Run();
+    }
+}
