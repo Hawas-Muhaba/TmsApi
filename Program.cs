@@ -18,6 +18,8 @@ public partial class Program
         builder.Services.AddControllers();
         builder.Services.AddSingleton<EnrollmentWorker>();
         builder.Services.AddSingleton<IEnrollmentService, EnrollmentService>();
+        builder.Services.AddSingleton<ICourseService, CourseService>();
+        builder.Services.AddSingleton<IStudentService, StudentService>();
 
         builder.Services
             .AddAuthentication("Training")
