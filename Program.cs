@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.OpenApi; // <-- 1. ይህ አዲስ የተጨመረ ነው
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
+using TmsApi.Data;
 
 public partial class Program
 {
@@ -20,7 +23,7 @@ public partial class Program
         builder.Services.AddSingleton<IEnrollmentService, EnrollmentService>();
         builder.Services.AddSingleton<ICourseService, CourseService>();
         builder.Services.AddSingleton<IStudentService, StudentService>();
-
+        builder.Services.AddDbContext<TmsDbContext>(Options => Options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase")));
         builder.Services
             .AddAuthentication("Training")
             .AddScheme<AuthenticationSchemeOptions, TrainingAuthHandler>("Training", null);
