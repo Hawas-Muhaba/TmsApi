@@ -1,78 +1,118 @@
-using Microsoft.AspNetCore.Razor.TagHelpers;
+using Microsoft.EntityFrameworkCore;
 
 public interface IStudentService
 {
     Task<StudentRecord> CreateAsync(string firstName, string lastName, string email);
     Task<StudentRecord?> GetByIdAsync(string id);
-
     Task<StudentRecord?> UpdateAsync(string id, string firstName, string lastName, string email);
-    Task<IReadOnlyList<StudentRecord>> GetAllAsync();
+    Task<PagedResult<StudentRecord>> GetAllAsync(int page = 1, int pageSize = 20);
     Task<bool> DeleteAsync(string id);
 }
 
+public sealed record PagedResult<T>(IReadOnlyList<T> Items, int Page, int PageSize, int TotalCount, int TotalPages);
+
 public class StudentService : IStudentService
 {
-    private readonly Dictionary<string, StudentRecord> _store = new();
+    private readonly StudentsDbContext _context;
     private readonly ILogger<StudentService> _logger;
 
-    public StudentService(ILogger<StudentService> logger)
+    public StudentService(StudentsDbContext context, ILogger<StudentService> logger)
     {
+        _context = context;
         _logger = logger;
     }
 
-    public Task<StudentRecord> CreateAsync(string firstName, string lastName, string email)
+    public async Task<StudentRecord> CreateAsync(string firstName, string lastName, string email)
     {
         var id = Guid.NewGuid().ToString("N")[..8];
-        var record = new StudentRecord(id, firstName, lastName, email, DateTime.UtcNow, DateTime.UtcNow);
-        _store[id] = record;
-        _logger.LogInformation("Created student {StudentId}", id);
-        return Task.FromResult(record);
-    }
-
-    public Task<StudentRecord?> GetByIdAsync(string id)
-    {
-        _store.TryGetValue(id, out var record);
-        if (record is null)
+        var now = DateTime.UtcNow;
+        var entity = new StudentEntity
         {
-            _logger.LogWarning("Student {StudentId} not found", id);
-        }
-        return Task.FromResult(record);
-    }
-    public Task<StudentRecord?> UpdateAsync(string id, string firstName, string lastName, string email)
-    {
-        if(!_store.TryGetValue(id, out var existing))
-        {
-            _logger.LogWarning("Student {StudentId} not found for update", id);
-            return Task.FromResult<StudentRecord?>(null);
-        }
-        var updated = existing with
-        {
+            Id = id,
             FirstName = firstName,
             LastName = lastName,
             Email = email,
-            UpdatedAt = DateTime.UtcNow
+            CreatedAt = now,
+            UpdatedAt = now
         };
-        _store[id] = updated;
+
+        _context.Students.Add(entity);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Created student {StudentId}", id);
+        return ToRecord(entity);
+    }
+
+    public async Task<StudentRecord?> GetByIdAsync(string id)
+    {
+        var entity = await _context.Students.FindAsync(id);
+        if (entity is null)
+        {
+            _logger.LogWarning("Student {StudentId} not found", id);
+            return null;
+        }
+
+        return ToRecord(entity);
+    }
+
+    public async Task<StudentRecord?> UpdateAsync(string id, string firstName, string lastName, string email)
+    {
+        var entity = await _context.Students.FindAsync(id);
+        if (entity is null)
+        {
+            _logger.LogWarning("Student {StudentId} not found for update", id);
+            return null;
+        }
+
+        entity.FirstName = firstName;
+        entity.LastName = lastName;
+        entity.Email = email;
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
         _logger.LogInformation("Updated student {StudentId}", id);
-        return Task.FromResult<StudentRecord?>(updated);
+        return ToRecord(entity);
     }
 
-    public Task<IReadOnlyList<StudentRecord>> GetAllAsync()
+    public async Task<PagedResult<StudentRecord>> GetAllAsync(int page = 1, int pageSize = 20)
     {
-        IReadOnlyList<StudentRecord> all = _store.Values.ToList();
-        return Task.FromResult(all);
+        page = Math.Max(page, 1);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var totalCount = await _context.Students.CountAsync();
+        var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+        var items = await _context.Students
+            .OrderBy(s => s.LastName)
+            .ThenBy(s => s.FirstName)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(ToRecordExpression())
+            .ToListAsync();
+
+        return new PagedResult<StudentRecord>(items, page, pageSize, totalCount, totalPages);
     }
 
-    public Task<bool> DeleteAsync(string id)
+    public async Task<bool> DeleteAsync(string id)
     {
-        var removed = _store.Remove(id);
-        if (removed)
-            _logger.LogInformation("Deleted student {StudentId}", id);
-        else
+        var entity = await _context.Students.FindAsync(id);
+        if (entity is null)
+        {
             _logger.LogWarning("Delete failed: student {StudentId} not found", id);
+            return false;
+        }
 
-        return Task.FromResult(removed);
+        _context.Students.Remove(entity);
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("Deleted student {StudentId}", id);
+        return true;
     }
+
+    private static StudentRecord ToRecord(StudentEntity entity)
+        => new(entity.Id, entity.FirstName, entity.LastName, entity.Email, entity.CreatedAt, entity.UpdatedAt);
+
+    private static Expression<Func<StudentEntity, StudentRecord>> ToRecordExpression()
+        => entity => new StudentRecord(entity.Id, entity.FirstName, entity.LastName, entity.Email, entity.CreatedAt, entity.UpdatedAt);
 }
 
 public record StudentRecord(

@@ -5,9 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 public class StudentsController(IStudentService studentService) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
-        var students = await studentService.GetAllAsync();
+        var students = await studentService.GetAllAsync(page, pageSize);
         return Ok(students);
     }
 

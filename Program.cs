@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.OpenApi; // <-- 1. ይህ አዲስ የተጨመረ ነው
+using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
 public partial class Program
@@ -16,10 +17,12 @@ public partial class Program
 
         // --- SERVICES SECTION ---
         builder.Services.AddControllers();
+        builder.Services.AddDbContext<StudentsDbContext>(options =>
+            options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
         builder.Services.AddSingleton<EnrollmentWorker>();
         builder.Services.AddSingleton<IEnrollmentService, EnrollmentService>();
         builder.Services.AddSingleton<ICourseService, CourseService>();
-        builder.Services.AddSingleton<IStudentService, StudentService>();
+        builder.Services.AddScoped<IStudentService, StudentService>();
 
         builder.Services
             .AddAuthentication("Training")
