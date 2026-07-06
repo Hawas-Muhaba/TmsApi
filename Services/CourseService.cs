@@ -1,4 +1,6 @@
-using Microsoft.AspNetCore.Razor.TagHelpers;
+using Microsoft.EntityFrameworkCore;
+using TmsApi.Data;
+using TmsApi.Entities;
 
 public interface ICourseService
 {
@@ -11,83 +13,95 @@ public interface ICourseService
 
 public class CourseService : ICourseService
 {
-    private readonly Dictionary<string, CourseRecord> _store = new();
+    private readonly TmsDbContext _context;
     private readonly ILogger<CourseService> _logger;
 
-    public CourseService(ILogger<CourseService> logger)
+    public CourseService(TmsDbContext context, ILogger<CourseService> logger)
     {
+        _context = context;
         _logger = logger;
     }
 
-    public Task<CourseRecord> CreateAsync(string code, string title, string description)
+    public async Task<CourseRecord> CreateAsync(string code, string title, string description)
     {
         if (string.IsNullOrWhiteSpace(code))
         {
             throw new ArgumentException("Course code is required", nameof(code));
         }
 
-        if (_store.TryGetValue(code, out var existing))
+        if (await _context.Courses.AnyAsync(c => c.Code == code))
         {
             _logger.LogWarning("Duplicate course create attempt {CourseCode} (record exists)", code);
-            return Task.FromResult(existing);
+            var existing = await _context.Courses.AsNoTracking().FirstAsync(c => c.Code == code);
+            return ToRecord(existing);
         }
 
-        var record = new CourseRecord(code, title, description, DateTime.UtcNow, DateTime.UtcNow);
-        _store[code] = record;
-        _logger.LogInformation("Created course {CourseCode}", code);
-        return Task.FromResult(record);
-    }
-
-    public Task<CourseRecord?> GetByCodeAsync(string code)
-    {
-        _store.TryGetValue(code, out var record);
-        if (record is null)
+        var course = new Course
         {
-            _logger.LogWarning("Course {CourseCode} not found", code);
-        }
-        return Task.FromResult(record);
-    }
-
-    public Task<CourseRecord?> UpdateAsync(string code, string title, string description)
-    {
-        if (!_store.TryGetValue(code, out var existing))
-        {
-            _logger.LogWarning("Course {CourseCode} not found for update", code);
-            return Task.FromResult<CourseRecord?>(null);
-        }
-
-        var updated = existing with
-        {
+            Code = code,
             Title = title,
-            Description = description,
-            UpdatedAt = DateTime.UtcNow
+            Capacity = 30
         };
 
-        _store[code] = updated;
-        _logger.LogInformation("Updated course {CourseCode}", code);
-        return Task.FromResult<CourseRecord?>(updated);
+        _context.Courses.Add(course);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Created course {CourseCode}", code);
+        return ToRecord(course);
     }
 
-    public Task<IReadOnlyList<CourseRecord>> GetAllAsync()
+    public async Task<CourseRecord?> GetByCodeAsync(string code)
     {
-        IReadOnlyList<CourseRecord> all = _store.Values.ToList();
-        return Task.FromResult(all);
-    }
-
-    public Task<bool> DeleteAsync(string code)
-    {
-        var removed = _store.Remove(code);
-        if (removed)
+        var course = await _context.Courses.AsNoTracking().FirstOrDefaultAsync(c => c.Code == code);
+        if (course is null)
         {
-            _logger.LogInformation("Deleted course {CourseCode}", code);
+            _logger.LogWarning("Course {CourseCode} not found", code);
+            return null;
         }
-        else
+
+        return ToRecord(course);
+    }
+
+    public async Task<CourseRecord?> UpdateAsync(string code, string title, string description)
+    {
+        var course = await _context.Courses.FirstOrDefaultAsync(c => c.Code == code);
+        if (course is null)
+        {
+            _logger.LogWarning("Course {CourseCode} not found for update", code);
+            return null;
+        }
+
+        course.Title = title;
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Updated course {CourseCode}", code);
+        return ToRecord(course);
+    }
+
+    public async Task<IReadOnlyList<CourseRecord>> GetAllAsync()
+    {
+        var courses = await _context.Courses.AsNoTracking().OrderBy(c => c.Code).ToListAsync();
+        return courses.Select(ToRecord).ToList();
+    }
+
+    public async Task<bool> DeleteAsync(string code)
+    {
+        var course = await _context.Courses.FirstOrDefaultAsync(c => c.Code == code);
+        if (course is null)
         {
             _logger.LogWarning("Delete failed: course {CourseCode} not found", code);
+            return false;
         }
 
-        return Task.FromResult(removed);
+        _context.Courses.Remove(course);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Deleted course {CourseCode}", code);
+        return true;
     }
+
+    private static CourseRecord ToRecord(Course course)
+        => new(course.Code, course.Title, string.Empty, DateTime.UtcNow, DateTime.UtcNow);
 }
 
 public record CourseRecord(

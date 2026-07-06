@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
 using TmsApi.Data;
 using TmsApi.Entities;
+using TmsApi.Services;
 
 public partial class Program
 {
@@ -21,10 +22,11 @@ public partial class Program
         // --- SERVICES SECTION ---
         builder.Services.AddControllers();
         builder.Services.AddSingleton<EnrollmentWorker>();
-        builder.Services.AddSingleton<IEnrollmentService, EnrollmentService>();
-        builder.Services.AddSingleton<ICourseService, CourseService>();
-        builder.Services.AddSingleton<IStudentService, StudentService>();
-        builder.Services.AddDbContext<TmsDbContext>(Options => Options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase"))
+        builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
+        builder.Services.AddScoped<ICourseService, CourseService>();
+        builder.Services.AddScoped<IStudentService, StudentService>();
+        builder.Services.AddScoped<IReportingService, ReportingService>();
+        builder.Services.AddDbContext<TmsDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase"))
             .LogTo(Console.WriteLine, LogLevel.Information)
             .EnableSensitiveDataLogging());
         builder.Services

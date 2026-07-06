@@ -7,11 +7,17 @@ using TmsApi.Entities;
 
 namespace TmsApi.Services;
 
-public class ReportService
+public interface IReportingService
+{
+    Task<IReadOnlyList<CourseEnrollmentSummary>> GetTopCoursesByEnrollmentAsync(int take = 5);
+}
+
+public record CourseEnrollmentSummary(string CourseTitle, int EnrollmentCount);
+public class ReportingService : IReportingService
 {
     private readonly TmsDbContext _dbContext;
 
-    public ReportService(TmsDbContext dbContext)
+    public ReportingService(TmsDbContext dbContext)
     {
         _dbContext = dbContext;
     }
@@ -42,6 +48,23 @@ public class ReportService
     {
         return await _dbContext.Students
             .Where(s => !s.Enrollments.Any())
+            .ToListAsync();
+    }
+    
+    public async Task<IReadOnlyList<CourseEnrollmentSummary>> GetTopCoursesByEnrollmentAsync(int take = 5)
+    {
+        take = Math.Clamp(take, 1, 20);
+
+        return await _dbContext.Courses
+            .Select(course => new
+            {
+                course.Title,
+                EnrollmentCount = course.Enrollments.Count
+            })
+            .OrderByDescending(summary => summary.EnrollmentCount)
+            .ThenBy(summary => summary.Title)
+            .Take(take)
+            .Select(summary => new CourseEnrollmentSummary(summary.Title, summary.EnrollmentCount))
             .ToListAsync();
     }
 }
