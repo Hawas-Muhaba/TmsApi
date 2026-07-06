@@ -1,86 +1,132 @@
-using Microsoft.AspNetCore.Razor.TagHelpers;
+using Microsoft.EntityFrameworkCore;
+using TmsApi.Data;
+using TmsApi.Entities;
 
 public interface IStudentService
 {
-    Task<StudentRecord> CreateAsync(string firstName, string lastName, string email);
-    Task<StudentRecord?> GetByIdAsync(string id);
-
-    Task<StudentRecord?> UpdateAsync(string id, string firstName, string lastName, string email);
-    Task<IReadOnlyList<StudentRecord>> GetAllAsync();
-    Task<bool> DeleteAsync(string id);
+    Task<Student> CreateAsync(string registrationNumber, string name, decimal gpa, bool isActive = true);
+    Task<Student?> GetByIdAsync(int id);
+    Task<Student?> UpdateAsync(int id, string registrationNumber, string name, decimal gpa, bool isActive);
+    Task<PagedResult<Student>> GetAllAsync(int page = 1, int pageSize = 20);
+    Task<bool> DeleteAsync(int id);
 }
+
+public sealed record PagedResult<T>(IReadOnlyList<T> Items, int Page, int PageSize, int TotalCount, int TotalPages);
 
 public class StudentService : IStudentService
 {
-    private readonly Dictionary<string, StudentRecord> _store = new();
+    private readonly TmsDbContext _context;
     private readonly ILogger<StudentService> _logger;
 
-    public StudentService(ILogger<StudentService> logger)
+    public StudentService(TmsDbContext context, ILogger<StudentService> logger)
     {
+        _context = context;
         _logger = logger;
     }
 
-    public Task<StudentRecord> CreateAsync(string firstName, string lastName, string email)
+    public async Task<Student> CreateAsync(string registrationNumber, string name, decimal gpa, bool isActive = true)
     {
-        var id = Guid.NewGuid().ToString("N")[..8];
-        var record = new StudentRecord(id, firstName, lastName, email, DateTime.UtcNow, DateTime.UtcNow);
-        _store[id] = record;
-        _logger.LogInformation("Created student {StudentId}", id);
-        return Task.FromResult(record);
+        var student = new Student
+        {
+            RegistrationNumber = registrationNumber,
+            Name = name,
+            GPA = gpa,
+            IsActive = isActive
+        };
+
+        _context.Students.Add(student);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Created student {StudentId}", student.Id);
+        return student;
     }
 
-    public Task<StudentRecord?> GetByIdAsync(string id)
+    public async Task<Student?> GetByIdAsync(int id)
     {
-        _store.TryGetValue(id, out var record);
-        if (record is null)
+        var student = await _context.Students.FindAsync(id);
+        if (student is null)
         {
             _logger.LogWarning("Student {StudentId} not found", id);
         }
-        return Task.FromResult(record);
+
+        return student;
     }
-    public Task<StudentRecord?> UpdateAsync(string id, string firstName, string lastName, string email)
+
+    public async Task<Student?> UpdateAsync(int id, string registrationNumber, string name, decimal gpa, bool isActive)
     {
-        if(!_store.TryGetValue(id, out var existing))
+        var student = await _context.Students.FindAsync(id);
+        if (student is null)
         {
             _logger.LogWarning("Student {StudentId} not found for update", id);
-            return Task.FromResult<StudentRecord?>(null);
+            return null;
         }
-        var updated = existing with
-        {
-            FirstName = firstName,
-            LastName = lastName,
-            Email = email,
-            UpdatedAt = DateTime.UtcNow
-        };
-        _store[id] = updated;
+
+        student.RegistrationNumber = registrationNumber;
+        student.Name = name;
+        student.GPA = gpa;
+        student.IsActive = isActive;
+
+        await _context.SaveChangesAsync();
         _logger.LogInformation("Updated student {StudentId}", id);
-        return Task.FromResult<StudentRecord?>(updated);
+        return student;
     }
 
-    public Task<IReadOnlyList<StudentRecord>> GetAllAsync()
+    public async Task<PagedResult<Student>> GetAllAsync(int page = 1, int pageSize = 20)
     {
-        IReadOnlyList<StudentRecord> all = _store.Values.ToList();
-        return Task.FromResult(all);
+        page = Math.Max(page, 1);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var totalCount = await _context.Students.CountAsync();
+        var items = await _context.Students
+            .OrderBy(s => s.Name)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+        return new PagedResult<Student>(items, page, pageSize, totalCount, totalPages);
     }
 
-    public Task<bool> DeleteAsync(string id)
+    public async Task<bool> DeleteAsync(int id)
     {
-        var removed = _store.Remove(id);
-        if (removed)
-            _logger.LogInformation("Deleted student {StudentId}", id);
-        else
+        var student = await _context.Students.FindAsync(id);
+        if (student is null)
+        {
             _logger.LogWarning("Delete failed: student {StudentId} not found", id);
+            return false;
+        }
+        
+        
+        // softdelete
+        student.IsDeleted = true;
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("Soft-deleted student {StudentId}", id);
+        return true;
 
-        return Task.FromResult(removed);
+        // _context.Students.Remove(student);
+        // await _context.SaveChangesAsync();
+        // _logger.LogInformation("Deleted student {StudentId}", id);
+        // return true;
     }
-}
 
-public record StudentRecord(
-    string Id,
-    string FirstName,
-    string LastName,
-    string Email,
-    DateTime CreatedAt,
-    DateTime UpdatedAt
-);
+    public async Task<IEnumerable<dynamic>> GetStudnetReportAsync()
+    {
+        var report = await _context.Students
+            .AsNoTracking()
+            .Select(s => new
+            {
+                s.Name,
+                EnrollmentCount = s.Enrollments.Count
+            })
+            .ToListAsync();
+            return report;
+    }
+    
+        // Set default SQL or update logic e.g. set shadow property before SaveChanges in your service layer:
+    public async Task UpdateLastUpdatedAsync(Student student)
+    {
+        _context.Entry(student).Property("LastUpdated").CurrentValue = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+    } 
+}
 

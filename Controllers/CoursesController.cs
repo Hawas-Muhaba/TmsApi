@@ -2,13 +2,20 @@ using Microsoft.AspNetCore.Mvc;
 
 [ApiController]
 [Route("api/courses")]
-public class CoursesController(ICourseService courseService) : ControllerBase
+public class CoursesController(ICourseService courseService, IReportingService reportingService) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
         var courses = await courseService.GetAllAsync();
         return Ok(courses);
+    }
+
+    [HttpGet("top-enrolled")]
+    public async Task<IActionResult> GetTopEnrolledCourses([FromQuery] int take = 5)
+    {
+        var summary = await reportingService.GetTopCoursesByEnrollmentAsync(take);
+        return Ok(summary);
     }
 
     [HttpGet("{code}")]

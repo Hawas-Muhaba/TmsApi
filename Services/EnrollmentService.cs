@@ -1,74 +1,151 @@
-using Microsoft.AspNetCore.Razor.TagHelpers;
+using Microsoft.EntityFrameworkCore;
+using TmsApi.Data;
+using TmsApi.Entities;
 
 public interface IEnrollmentService
 {
     Task<EnrollmentRecord> EnrollAsync(string studentId, string courseCode);
     Task<EnrollmentRecord?> GetByIdAsync(string id);
     Task<IReadOnlyList<EnrollmentRecord>> GetAllAsync();
-    Task<bool> DeleteAsync(string id); 
+    Task<bool> DeleteAsync(string id);
+    Task<int> ArchiveOldEnrollmentsAsync(DateTime cutoff);
 }
 
-public class EnrollmentService: IEnrollmentService
+public class EnrollmentService : IEnrollmentService
 {
-    private readonly Dictionary<string, EnrollmentRecord> _store = new();
+    private readonly TmsDbContext _context;
     private readonly ILogger<EnrollmentService> _logger;
 
-    public EnrollmentService(ILogger<EnrollmentService> logger)
+    public EnrollmentService(TmsDbContext context, ILogger<EnrollmentService> logger)
     {
+        _context = context;
         _logger = logger;
     }
 
-    public Task<EnrollmentRecord> EnrollAsync (string studentId, string courseCode)
+    public async Task<EnrollmentRecord> EnrollAsync(string studentId, string courseCode)
     {
-        //check for duplicates
-        var existing = _store.Values
-            .FirstOrDefault(e=>e.StudentId == studentId && e.CourseCode == courseCode);
-        
-        if(existing is not null)
+        var student = await _context.Students
+            .FirstOrDefaultAsync(s => s.Id.ToString() == studentId || s.RegistrationNumber == studentId);
+
+        if (student is null)
+        {
+            throw new InvalidOperationException($"Student '{studentId}' was not found.");
+        }
+
+        var course = await _context.Courses
+            .FirstOrDefaultAsync(c => c.Code == courseCode);
+
+        if (course is null)
+        {
+            throw new InvalidOperationException($"Course '{courseCode}' was not found.");
+        }
+
+        var existing = await _context.Enrollments
+            .AnyAsync(e => e.StudentId == student.Id && e.CourseId == course.Id);
+
+        if (existing)
         {
             _logger.LogWarning(
-                "Duplicate enrollment attempt {StudentId} already in {CourseCode} (record {EnrollmentId})",
-                studentId, courseCode, existing.Id
-            );
+                "Duplicate enrollment attempt {StudentId} already in {CourseCode}",
+                studentId, courseCode);
 
-            return Task.FromResult(existing);
+            var existingEnrollment = await _context.Enrollments
+                .AsNoTracking()
+                .FirstAsync(e => e.StudentId == student.Id && e.CourseId == course.Id);
+
+            return ToRecord(existingEnrollment, course.Code);
         }
-        var id = Guid.NewGuid().ToString("N")[..8];
-        var record = new EnrollmentRecord(id, studentId, courseCode, DateTime.UtcNow);
-        _store[id] = record;
-        _logger.LogInformation(
-        "Enrolled {StudentId} in {CourseCode} record {EnrollmentId}",
-        studentId, courseCode, id);
-        return Task.FromResult(record);
-    }
-    public Task<EnrollmentRecord?> GetByIdAsync(string id)
-    {   
-        _store.TryGetValue(id, out var record);
-        if(record is null)
+
+        var enrollment = new Enrollment
         {
-            _logger.LogWarning("Enrollment {EnrollmentId} not Found", id);
+            StudentId = student.Id,
+            CourseId = course.Id,
+            EnrolledAt = DateTime.UtcNow,
+            IsArchived = false
+        };
+
+        _context.Enrollments.Add(enrollment);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Enrolled {StudentId} in {CourseCode} record {EnrollmentId}",
+            studentId, courseCode, enrollment.Id);
+
+        return ToRecord(enrollment, course.Code);
+    }
+
+    public async Task<EnrollmentRecord?> GetByIdAsync(string id)
+    {
+        if (!int.TryParse(id, out var enrollmentId))
+        {
+            _logger.LogWarning("Enrollment {EnrollmentId} is not a valid numeric id", id);
+            return null;
         }
-        return Task.FromResult(record);
+
+        var enrollment = await _context.Enrollments
+            .AsNoTracking()
+            .Include(e => e.Course)
+            .FirstOrDefaultAsync(e => e.Id == enrollmentId);
+
+        if (enrollment is null)
+        {
+            _logger.LogWarning("Enrollment {EnrollmentId} not found", id);
+            return null;
+        }
+
+        return ToRecord(enrollment, enrollment.Course?.Code ?? string.Empty);
     }
-    public Task<IReadOnlyList<EnrollmentRecord>> GetAllAsync()
+
+    public async Task<IReadOnlyList<EnrollmentRecord>> GetAllAsync()
     {
-        IReadOnlyList<EnrollmentRecord> all = _store.Values.ToList();
-        return Task.FromResult(all);
+        var enrollments = await _context.Enrollments
+            .AsNoTracking()
+            .Include(e => e.Course)
+            .OrderBy(e => e.EnrolledAt)
+            .ToListAsync();
+
+        return enrollments.Select(e => ToRecord(e, e.Course?.Code ?? string.Empty)).ToList();
     }
-    public Task<bool> DeleteAsync(string id)
+
+    public async Task<bool> DeleteAsync(string id)
     {
-        var removed = _store.Remove(id);
-        if(removed)
-        _logger.LogInformation("Deleted enrollment {EnrollmentId}", id);
-        else
+        if (!int.TryParse(id, out var enrollmentId))
+        {
+            _logger.LogWarning("Delete failed: enrollment {EnrollmentId} is not a valid numeric id", id);
+            return false;
+        }
+
+        var enrollment = await _context.Enrollments.FindAsync(enrollmentId);
+        if (enrollment is null)
         {
             _logger.LogWarning("Delete failed: enrollment {EnrollmentId} not found", id);
+            return false;
         }
-        return Task.FromResult(removed);
+
+        _context.Enrollments.Remove(enrollment);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Deleted enrollment {EnrollmentId}", id);
+        return true;
     }
+
+    public async Task<int> ArchiveOldEnrollmentsAsync(DateTime cutoff)
+    {
+        var archivedCount = await _context.Enrollments
+            .Where(e => !e.IsArchived && e.EnrolledAt < cutoff)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(e => e.IsArchived, true));
+
+        _logger.LogInformation("Archived {ArchivedCount} enrollments older than {Cutoff}", archivedCount, cutoff);
+        return archivedCount;
+    }
+
+    private static EnrollmentRecord ToRecord(Enrollment enrollment, string courseCode)
+        => new(enrollment.Id.ToString(), enrollment.StudentId.ToString(), courseCode, enrollment.EnrolledAt);
 }
+
 public record EnrollmentRecord(
-string Id,
-string StudentId,
-string CourseCode,
-DateTime EnrolledAt);
+    string Id,
+    string StudentId,
+    string CourseCode,
+    DateTime EnrolledAt);

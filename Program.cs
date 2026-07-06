@@ -1,10 +1,11 @@
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.OpenApi; // <-- 1. ይህ አዲስ የተጨመረ ነው
+using Microsoft.AspNetCore.OpenApi; 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
 using TmsApi.Data;
 using TmsApi.Entities;
+using TmsApi.Services;
 
 public partial class Program
 {
@@ -19,14 +20,13 @@ public partial class Program
         });
 
         // --- SERVICES SECTION ---
-        builder.Services.AddControllers();
         builder.Services.AddSingleton<EnrollmentWorker>();
-        builder.Services.AddSingleton<IEnrollmentService, EnrollmentService>();
-        builder.Services.AddSingleton<ICourseService, CourseService>();
-        builder.Services.AddSingleton<IStudentService, StudentService>();
-        builder.Services.AddDbContext<TmsDbContext>(Options => Options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase"))
-            .LogTo(Console.WriteLine, LogLevel.Information)
-            .EnableSensitiveDataLogging());
+        builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
+        builder.Services.AddScoped<ICourseService, CourseService>();
+        builder.Services.AddScoped<IStudentService, StudentService>();
+        builder.Services.AddScoped<IReportingService, ReportingService>();
+
+       
         builder.Services
             .AddAuthentication("Training")
             .AddScheme<AuthenticationSchemeOptions, TrainingAuthHandler>("Training", null);
@@ -36,19 +36,21 @@ public partial class Program
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        builder.Services.AddProblemDetails(); // Exercise 6
-        builder.Services.AddOpenApi();        // Exercise 7
+        builder.Services.AddProblemDetails(); 
+        builder.Services.AddOpenApi();        
         builder.Services.AddAuthorization();
 
+         builder.Services.AddDbContext<TmsDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase"))
+            .LogTo(Console.WriteLine, LogLevel.Information)
+            .EnableSensitiveDataLogging());
+
+        builder.Services.AddControllers();
+        
         var app = builder.Build();
-
-        // --- MIDDLEWARE SECTION (ቅደም ተከተሉ ተስተካክሏል) ---
-
-        // 1. የ ProblemDetails ኤረር መያዣዎች ሁሌም መጀመሪያ መሆን አለባቸው
+ 
         app.UseExceptionHandler();
         app.UseStatusCodePages();
 
-        // 2. Routing እና Security
         app.UseRouting();
         app.UseAuthentication();
         app.UseAuthorization();
@@ -68,7 +70,7 @@ public partial class Program
             return Results.Ok("processed");
         });
 
-        // Exercise 6: የተስተካከለው የኤረር መሞከሪያ መንገድ (Endpoint)
+        
         app.MapGet("/api/error", () =>
         {
             throw new Exception("Simulated failure for ProblemDetails testing");
@@ -136,19 +138,19 @@ public partial class Program
                      {
                          Code = "CS-101",
                          Title = "Introdaction to Computer Science",
-                         Capacity = 30,
+                         MaxCapacity = 30,
                      },
                         new()
                         {
                             Code = "CS-102",
                             Title = "Data Structures and Algorithms",
-                            Capacity = 25,
+                            MaxCapacity = 25,
                         },
                         new()
                         {
                             Code = "CS-103",
                             Title = "Database Systems",
-                            Capacity = 20,
+                            MaxCapacity = 20,
                         }
                  };
                 dbContext.AddRange(courses);
