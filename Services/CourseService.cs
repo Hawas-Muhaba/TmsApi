@@ -40,7 +40,7 @@ public class CourseService : ICourseService
         {
             Code = code,
             Title = title,
-            Capacity = 30
+            MaxCapacity = 30
         };
 
         _context.Courses.Add(course);

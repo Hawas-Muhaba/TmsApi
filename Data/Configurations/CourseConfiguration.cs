@@ -23,7 +23,7 @@ public class CourseConfiguration : IEntityTypeConfiguration<Course>
             .IsRequired()
             .HasMaxLength(200);
 
-        builder.Property(c => c.Capacity)
+        builder.Property(c => c.MaxCapacity)
             .HasDefaultValue(30);
 
         builder.HasMany(c => c.Enrollments)
