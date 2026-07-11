@@ -2,50 +2,36 @@ using Microsoft.AspNetCore.Mvc;
 
 [ApiController]
 [Route("api/courses")]
-public class CoursesController(ICourseService courseService, IReportingService reportingService) : ControllerBase
+public class CoursesController(ICourseService courseService) : ControllerBase
 {
-    [HttpGet]
-    public async Task<IActionResult> GetAll()
-    {
-        var courses = await courseService.GetAllAsync();
-        return Ok(courses);
-    }
+// GET /api/courses
+[HttpGet]
+public async Task<IActionResult> GetAll()
+    => Ok(await courseService.GetAllAsync());
 
-    [HttpGet("top-enrolled")]
-    public async Task<IActionResult> GetTopEnrolledCourses([FromQuery] int take = 5)
-    {
-        var summary = await reportingService.GetTopCoursesByEnrollmentAsync(take);
-        return Ok(summary);
-    }
-
-    [HttpGet("{code}")]
-    public async Task<IActionResult> GetByCode(string code)
-    {
-        var course = await courseService.GetByCodeAsync(code);
-        return course is not null ? Ok(course) : NotFound();
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateCourseRequest request)
-    {
-        var course = await courseService.CreateAsync(request.Code, request.Title, request.Description);
-        return CreatedAtAction(nameof(GetByCode), new { code = course.Code }, course);
-    }
-
-    [HttpPut("{code}")]
-    public async Task<IActionResult> Update(string code, [FromBody] UpdateCourseRequest request)
-    {
-        var updated = await courseService.UpdateAsync(code, request.Title, request.Description);
-        return updated is not null ? Ok(updated) : NotFound();
-    }
-
-    [HttpDelete("{code}")]
-    public async Task<IActionResult> Delete(string code)
-    {
-        var deleted = await courseService.DeleteAsync(code);
-        return deleted ? NoContent() : NotFound();
-    }
+// GET /api/courses/{id}
+[HttpGet("{id}")]
+public async Task<IActionResult> GetById(string id)
+{
+    var record = await courseService.GetByIdAsync(id);
+    return record is not null ? Ok(record) : NotFound();
 }
 
-public record CreateCourseRequest(string Code, string Title, string Description);
-public record UpdateCourseRequest(string Title, string Description);
+// POST /api/courses -> 201 + Location
+[HttpPost]
+public async Task<IActionResult> Create([FromBody] CreateCourseRequest request)
+{
+    var record = await courseService.CreateAsync(request.Code, request.Title, request.Credits);
+    return CreatedAtAction(nameof(GetById), new { id = record.Id }, record);
+}
+
+// DELETE /api/courses/{id} -> 204 or 404
+[HttpDelete("{id}")]
+public async Task<IActionResult> Delete(string id)
+{
+    var deleted = await courseService.DeleteAsync(id);
+    return deleted ? NoContent() : NotFound();
+}
+}
+
+public record CreateCourseRequest(string Code, string Title, int Credits);

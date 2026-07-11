@@ -4,7 +4,7 @@ Accept: application/json
 
 ###
 @TmsApi_HostAddress = http://localhost:5123
-# GET {{TmsApi_HostAddress}}/api/enrollments/92d688e0
+GET {{TmsApi_HostAddress}}/api/enrollments/92d688e0
 
 POST {{TmsApi_HostAddress}}/api/enrollments
 Content-Type: application/json

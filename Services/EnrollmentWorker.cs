@@ -1,18 +1,30 @@
-using Microsoft.Extensions.DependencyInjection;
 
-public class EnrollmentWorker
+
+// bad pattern
+// public class EnrollmentWorker
+// {
+//     private readonly IEnrollmentService _svc;
+
+//     public EnrollmentWorker(IEnrollmentService svc)
+//     {
+//         _svc = svc;
+//     }
+
+//     public void ProcessBatch()
+//     {
+//         // process it, to show bad captive dependency
+//         _svc.EnrollAsync("s-001", "CS_101").GetAwaiter().GetResult();
+//     }
+// }
+
+
+
+// // fixed pattern of scope
+public class EnrollmentWorker(IServiceScopeFactory scopeFactory)
 {
-    private readonly IServiceScopeFactory _scopeFactory;
-
-    public EnrollmentWorker(IServiceScopeFactory scopeFactory)
-    {
-        _scopeFactory = scopeFactory;
-    }
-
     public void ProcessBatch()
     {
-        using var scope = _scopeFactory.CreateScope();
-
-        var enrollmentService = scope.ServiceProvider.GetRequiredService<IEnrollmentService>();
+        using var scope = scopeFactory.CreateScope();
+        var svc = scope.ServiceProvider.GetRequiredService<IEnrollmentService>();    
     }
 }

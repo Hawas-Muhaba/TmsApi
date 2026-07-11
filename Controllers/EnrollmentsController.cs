@@ -3,14 +3,14 @@ using Microsoft.AspNetCore.Mvc;
 [Route("api/enrollments")]
 public class EnrollmentsController(IEnrollmentService enrollmentService) : ControllerBase
 {
-    // GET /api/enrollments returns all enrollment records
+    // GET/api/enrollments returns all enrollment records
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
         var enrollments = await enrollmentService.GetAllAsync();
         return Ok(enrollments);
     }
-    // GET /api/enrollments/{id} returns one or 404
+    // GET/api/enrollments/{id} returns one or 404
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(string id)
     {
@@ -23,7 +23,6 @@ public class EnrollmentsController(IEnrollmentService enrollmentService) : Contr
         var record = await enrollmentService.EnrollAsync(request.StudentId, request.CourseCode);
         return CreatedAtAction(nameof(GetById), new { id = record.Id }, record);
     }
-
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(string id)
     {
