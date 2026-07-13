@@ -1,11 +1,18 @@
 using Microsoft.AspNetCore.Authentication;
 using Scalar.AspNetCore;
+using Microsoft.EntityFrameworkCore;
+using TmsApi.Data;
+using TmsApi.Entities;
+// using TmsApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 
 builder.Services.AddProblemDetails();
-
+builder.Services.AddDbContext<TmsDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase"))
+        .LogTo(Console.WriteLine, LogLevel.Information)   // dev only - prints generated SQL
+        .EnableSensitiveDataLogging());     
 builder.Services.AddSingleton<EnrollmentWorker>();
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<ICourseService, CourseService>();
@@ -62,4 +69,57 @@ app.MapGet("/api/error", () =>
 {
     throw new TmsDatabaseException("Simulated database failure for ProblemDetails testing");
 });
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
+    context.Database.Migrate(); // applies pending migrations, keeps history intact
+
+    if (!context.Students.Any())
+    {
+        var students = new List<Student>
+        {
+            new() { RegistrationNumber = "TMS-2026-0001", Name = "Alice Smith", GPA = 3.8m, IsActive = true },
+            new() { RegistrationNumber = "TMS-2026-0002", Name = "Bob Jones", GPA = 2.9m, IsActive = true },
+            new() { RegistrationNumber = "TMS-2026-0003", Name = "Charlie Brown", GPA = 3.4m, IsActive = false },
+            new() { RegistrationNumber = "TMS-2026-0004", Name = "Diana Prince", GPA = 3.9m, IsActive = true },
+            new() { RegistrationNumber = "TMS-2026-0005", Name = "Evan Wright", GPA = 2.5m, IsActive = true }
+        };
+        context.Students.AddRange(students);
+
+        var courses = new List<Course>
+        {
+            new() { Code = "CS-101", Title = "Introduction to Computer Science", Capacity = 30 },
+            new() { Code = "CS-201", Title = "Data Structures and Algorithms", Capacity = 25 },
+            new() { Code = "MAT-101", Title = "Calculus I", Capacity = 40 }
+        };
+        context.Courses.AddRange(courses);
+        context.SaveChanges(); // must save before referencing generated Ids below
+
+        var enrollments = new List<Enrollment>
+        {
+            new() { StudentId = students[0].Id, CourseId = courses[0].Id, Grade = 4.0m },
+            new() { StudentId = students[0].Id, CourseId = courses[1].Id, Grade = 3.6m },
+            new() { StudentId = students[1].Id, CourseId = courses[0].Id, Grade = 2.8m },
+            new() { StudentId = students[3].Id, CourseId = courses[1].Id, Grade = 3.9m }
+        };
+        context.Enrollments.AddRange(enrollments);
+
+        // Extended entities - same seeding pattern applied to Assessment and Certificate
+        var assessments = new List<Assessment>
+        {
+            new() { Title = "Midterm Exam", MaxScore = 100m, Weight = 0.30m, CourseId = courses[0].Id },
+            new() { Title = "Final Project", MaxScore = 100m, Weight = 0.40m, CourseId = courses[0].Id },
+            new() { Title = "Problem Set 1", MaxScore = 50m, Weight = 0.10m, CourseId = courses[2].Id }
+        };
+        context.Assessments.AddRange(assessments);
+
+        var certificates = new List<Certificate>
+        {
+            new() { SerialNumber = "CERT-2026-0001", StudentId = students[0].Id, CourseId = courses[0].Id }
+        };
+        context.Certificates.AddRange(certificates);
+
+        context.SaveChanges();
+    }
+}
 app.Run();
