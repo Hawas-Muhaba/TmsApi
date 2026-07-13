@@ -53,4 +53,52 @@ public class ReportsController(TmsDbContext context): ControllerBase
         return Ok(deleted);
     }
 
+    [HttpPost("students/active-count")]
+    public async Task<IActionResult> GetActiveStudentsCount(CancellationToken ct = default)
+    {
+        var count = await context.Students
+            .Where(s=> s.IsActive && s.GPA >= 3.0m)
+            .CountAsync();
+    
+        return Ok(new { count });
+    }
+
+    [HttpGet("courses/enrollment-counts")]
+    public async Task<IActionResult> GetCoursesEnrollmentCounts(CancellationToken ct = default)
+    {
+        var report = await context.Courses
+            .Select(c => new {
+                c.Title,
+                EnrollmentCount = c.Enrollments.Count
+            })
+            .OrderByDescending(x => x.EnrollmentCount)
+            .ToListAsync(ct);
+
+        return Ok(report);
+    }
+
+    //what is the average gpa per course
+    [HttpGet("courses/average-gpa")]
+    public async Task<IActionResult> GetAverageGpaPerCourse()
+    {
+        var list = await context.Enrollments
+            .GroupBy(e=>e.Course.Title)
+            .Select( g => new {
+                Course = g.Key,
+                AverageGPA = g.Average(e => e.Student.GPA)
+            })
+            .ToListAsync();
+
+        return Ok(list);
+    }
+    
+    [HttpGet("students/no-enrollments")]
+    public async Task<IActionResult> GetStudentsWithNoEnrollments()
+    {
+        var list = await context.Students
+            .Where( s => !s.Enrollments.Any())
+            .Select(s=> s.Name)
+            .ToListAsync();
+        return Ok(list);
+    }
 }
