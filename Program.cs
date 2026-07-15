@@ -3,16 +3,13 @@ using Scalar.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 using TmsApi.Data;
 using TmsApi.Entities;
+using TmsApi.Services;
 // using TmsApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 
-builder.Services.AddProblemDetails();
-builder.Services.AddDbContext<TmsDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase"))
-        .LogTo(Console.WriteLine, LogLevel.Information)   // dev only - prints generated SQL
-        .EnableSensitiveDataLogging());     
+builder.Services.AddProblemDetails();   
 builder.Services.AddSingleton<EnrollmentWorker>();
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<ICourseService, CourseService>();
@@ -24,13 +21,18 @@ builder.Services.AddOptions<PaymentOptions>()
         .BindConfiguration("Payments")
         .ValidateDataAnnotations()
         .ValidateOnStart();
-builder.Services.AddControllers();
+
 
 builder.Services.AddAuthentication("Training")
     .AddScheme<AuthenticationSchemeOptions, TrainingAuthHandler>("Training", null);
 
 builder.Services.AddAuthorization();
 builder.Services.AddOpenApi();
+builder.Services.AddDbContext<TmsDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase"))
+        .LogTo(Console.WriteLine, LogLevel.Information)   // dev only - prints generated SQL
+        .EnableSensitiveDataLogging());  
+builder.Services.AddControllers();
 var app = builder.Build();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
@@ -88,9 +90,9 @@ using (var scope = app.Services.CreateScope())
 
         var courses = new List<Course>
         {
-            new() { Code = "CS-101", Title = "Introduction to Computer Science", Capacity = 30 },
-            new() { Code = "CS-201", Title = "Data Structures and Algorithms", Capacity = 25 },
-            new() { Code = "MAT-101", Title = "Calculus I", Capacity = 40 }
+            new() { Code = "CS-101", Title = "Introduction to Computer Science", MaxCapacity = 30 },
+            new() { Code = "CS-201", Title = "Data Structures and Algorithms", MaxCapacity = 25 },
+            new() { Code = "MAT-101", Title = "Calculus I", MaxCapacity = 40 }
         };
         context.Courses.AddRange(courses);
         context.SaveChanges(); // must save before referencing generated Ids below

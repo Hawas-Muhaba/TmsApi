@@ -1,51 +1,95 @@
-public class AssessmentService: IAssessmentService
+using Microsoft.EntityFrameworkCore;
+using TmsApi.Data;
+using TmsApi.Dtos;
+using TmsApi.Entities;
+
+public class AssessmentService(TmsDbContext context, ILogger<AssessmentService> logger): IAssessmentService
 {
-    private readonly Dictionary<string, AssessmentRecord> _store = new();
-    private readonly ILogger<AssessmentService> _logger;
-    public AssessmentService(ILogger<AssessmentService> logger)
+    public async Task<AssessmentResponseDto> CreateAsync(CreateAssessmentRequest request, CancellationToken ct)
     {
-        _logger = logger;
-    }
-    public Task<AssessmentRecord> RecordAsync(string studentId, string courseCode, decimal score, decimal maxScore)
-    {
-        if(score> maxScore)
+        var assessment = new Assessment
         {
-            _logger.LogWarning("IScore {Score} exceeds max {MaxScore} for {StudentId} in {CourseCode} clamping to max",
-            score, maxScore, studentId, courseCode);
-            score = maxScore;
-        }
-        var id = Guid.NewGuid().ToString("N")[..8];
-        var record = new AssessmentRecord(id, studentId, courseCode, score, maxScore, DateTime.UtcNow);
-        _store[id] = record;
-         _logger.LogInformation(
-            "Recorded assessment {StudentId} {CourseCode} {Score}/{MaxScore} record {AssessmentId}",
-            studentId, courseCode, score, maxScore, id);
+            Title = request.Title,
+            MaxScore = request.MaxScore,
+            Weight = request.Weight,
+            CourseId = request.CourseId
+        };
 
-        return Task.FromResult(record);
+        context.Assessments.Add(assessment);
+        await context.SaveChangesAsync(ct);
+
+        logger.LogInformation(
+            "Created assessment {Title} {MaxScore} weight {Weight} for course {CourseId}",
+            request.Title, request.MaxScore, request.Weight, request.CourseId);
+
+        return new AssessmentResponseDto(assessment.Id, assessment.Title, assessment.MaxScore, assessment.Weight, assessment.CourseId);
     }
-    public Task<AssessmentRecord?> GetByIdAsync(string id)
+
+    public async Task<AssessmentResponseDto?> GetByIdAsync(string id)
     {
-        _store.TryGetValue(id, out var record);
-        if(record is null)
+        if (!int.TryParse(id, out var assessmentId))
         {
-            _logger.LogWarning("Assessment {AssessmentId} not found", id);
+            logger.LogWarning("Invalid assessment ID format {AssessmentId}", id);
+            return null;
         }
-        return Task.FromResult(record);
-    }
-    public Task<IReadOnlyList<AssessmentRecord>> GetAllAsync()
-    {
-        IReadOnlyList<AssessmentRecord> all = _store.Values.ToList();
-        return Task.FromResult(all);
+
+        var assessment = await context.Assessments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Id == assessmentId);
+
+        if(assessment is null)
+        {
+            logger.LogWarning("Assessment {AssessmentId} not found", id);
+            return null;
+        }
+
+        return new AssessmentResponseDto(
+            assessment.Id,
+            assessment.Title,
+            assessment.MaxScore,
+            assessment.Weight,
+            assessment.CourseId);
     }
 
-    public Task<bool> DeleteAsync(string id)
+    public async Task<IReadOnlyList<AssessmentResponseDto>> GetAllAsync()
     {
-        var removed = _store.Remove(id);
-        if(removed)
-          _logger.LogInformation("Deleted assessment {AssessmentId}", id);
-        else
-            _logger.LogWarning("Delete failed assessment {AssessmentId} not found", id);
+        var assessments = await context.Assessments
+            .AsNoTracking()
+            .ToListAsync();
 
-        return Task.FromResult(removed);
+        var records = assessments
+            .Select(a => new AssessmentResponseDto(
+                a.Id,
+                a.Title,
+                a.MaxScore,
+                a.Weight,
+                a.CourseId))
+            .ToList();
+
+        logger.LogInformation("Retrieved {Count} assessments", records.Count);
+        return records;
+    }
+
+    public async Task<bool> DeleteAsync(string id)
+    {
+        if (!int.TryParse(id, out var assessmentId))
+        {
+            logger.LogWarning("Invalid assessment ID format {AssessmentId}", id);
+            return false;
+        }
+
+        var assessment = await context.Assessments.FirstOrDefaultAsync(a => a.Id == assessmentId);
+        
+        if(assessment is null)
+        {
+            logger.LogWarning("Delete failed assessment {AssessmentId} not found", id);
+            return false;
+        }
+
+        context.Assessments.Remove(assessment);
+        await context.SaveChangesAsync();
+
+        logger.LogInformation("Deleted assessment {AssessmentId}", id);
+        return true;
     }
 }

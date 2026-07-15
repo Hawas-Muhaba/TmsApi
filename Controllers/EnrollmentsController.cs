@@ -1,28 +1,31 @@
 using Microsoft.AspNetCore.Mvc;
+using TmsApi.Dtos;
+
 [ApiController]
 [Route("api/enrollments")]
 public class EnrollmentsController(IEnrollmentService enrollmentService) : ControllerBase
 {
-    // GET/api/enrollments returns all enrollment records
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
         var enrollments = await enrollmentService.GetAllAsync();
         return Ok(enrollments);
     }
-    // GET/api/enrollments/{id} returns one or 404
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(string id)
+
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetById(int id, CancellationToken ct)
     {
-        var record = await enrollmentService.GetByIdAsync(id);
+        var record = await enrollmentService.GetByIdAsync(id, ct);
         return record is not null ? Ok(record) : NotFound();
     }
+
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateEnrollmentRequest request)
+    public async Task<IActionResult> Create([FromBody] CreateEnrollmentRequest request, CancellationToken ct)
     {
-        var record = await enrollmentService.EnrollAsync(request.StudentId, request.CourseCode);
+        var record = await enrollmentService.CreateAsync(request, ct);
         return CreatedAtAction(nameof(GetById), new { id = record.Id }, record);
     }
+
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(string id)
     {
@@ -30,5 +33,3 @@ public class EnrollmentsController(IEnrollmentService enrollmentService) : Contr
         return deleted ? NoContent() : NotFound();
     }
 }
-
-public record CreateEnrollmentRequest(string StudentId, string CourseCode);

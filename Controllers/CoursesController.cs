@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-
+using TmsApi.Dtos;
+using TmsApi.Services;
 [ApiController]
 [Route("api/courses")]
 public class CoursesController(ICourseService courseService) : ControllerBase
@@ -10,19 +11,30 @@ public async Task<IActionResult> GetAll()
     => Ok(await courseService.GetAllAsync());
 
 // GET /api/courses/{id}
-[HttpGet("{id}")]
-public async Task<IActionResult> GetById(string id)
+[HttpGet("{id:int}", Name = nameof(GetCourseById))]
+public async Task<IActionResult> GetCourseById(int id, CancellationToken ct)
 {
-    var record = await courseService.GetByIdAsync(id);
-    return record is not null ? Ok(record) : NotFound();
+    var course = await courseService.GetByIdAsync(id, ct);
+    return course is not null ? Ok(course) : NotFound();
 }
 
 // POST /api/courses -> 201 + Location
 [HttpPost]
-public async Task<IActionResult> Create([FromBody] CreateCourseRequest request)
+public async Task<IActionResult> CreateCourse(CreateCourseRequest request, CancellationToken ct)
 {
-    var record = await courseService.CreateAsync(request.Code, request.Title, request.Credits);
-    return CreatedAtAction(nameof(GetById), new { id = record.Id }, record);
+    var exists = await courseService.CodeExistsAsync(request.Code, ct);
+
+    if(exists)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Course code already exists",
+                Detail = $"A course with code '{request.Code}' is already registered.",
+                Status = StatusCodes.Status409Conflict
+            });
+        }
+    var result = await courseService.CreateAsync(request, ct);
+    return CreatedAtAction(nameof(GetCourseById), new {id = result.Id}, result);
 }
 
 // DELETE /api/courses/{id} -> 204 or 404
@@ -33,5 +45,3 @@ public async Task<IActionResult> Delete(string id)
     return deleted ? NoContent() : NotFound();
 }
 }
-
-public record CreateCourseRequest(string Code, string Title, int Credits);

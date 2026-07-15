@@ -1,66 +1,110 @@
-public class CertificateService : ICertificateService
+using Microsoft.EntityFrameworkCore;
+using TmsApi.Data;
+using TmsApi.Dtos;
+using TmsApi.Entities;
+
+public class CertificateService(TmsDbContext context, ILogger<CertificateService> logger) : ICertificateService
 {
-    private readonly Dictionary<string, CertificateRecord> _store = new();
-    private readonly ILogger<CertificateService> _logger;
-
-    public CertificateService(ILogger<CertificateService> logger)
+    public async Task<CertificateResponseDto> CreateAsync(CreateCertificateRequest request, CancellationToken ct)
     {
-        _logger = logger;
-    }
-
-    public Task<CertificateRecord> IssueAsync(string studentId, string courseCode)
-    {
-        // A student should not receive two certificates for the same course
-        var existing = _store.Values
-            .FirstOrDefault(c => c.StudentId == studentId && c.CourseCode == courseCode);
+        // Check if student already has certificate for this course
+        var existing = await context.Certificates
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.StudentId == request.StudentId && c.CourseId == request.CourseId, ct);
 
         if (existing is not null)
         {
-            _logger.LogWarning(
-                "Duplicate certificate issue attempt {StudentId} already certified for {CourseCode} (record {CertificateId})",
-                studentId, courseCode, existing.Id);
-            return Task.FromResult(existing);
+            logger.LogWarning(
+                "Duplicate certificate issue attempt {StudentId} already certified for course {CourseId} (record {CertificateId})",
+                request.StudentId, request.CourseId, existing.Id);
+            return new CertificateResponseDto(existing.Id, existing.SerialNumber, existing.IssuedAt, existing.StudentId, existing.CourseId);
         }
 
-        var id = Guid.NewGuid().ToString("N")[..8];
-        var certificateNumber = $"CERT-{DateTime.UtcNow:yyyy}-{id.ToUpperInvariant()}";
-        var record = new CertificateRecord(id, studentId, courseCode, certificateNumber, DateTime.UtcNow);
-        _store[id] = record;
+        var serialNumber = $"CERT-{DateTime.UtcNow:yyyy}-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";
 
-        _logger.LogInformation(
-            "Issued certificate {CertificateNumber} to {StudentId} for {CourseCode} record {CertificateId}",
-            certificateNumber, studentId, courseCode, id);
-
-        return Task.FromResult(record);
-    }
-
-    public Task<CertificateRecord?> GetByIdAsync(string id)
-    {
-        _store.TryGetValue(id, out var record);
-
-        if (record is null)
+        var certificate = new Certificate
         {
-            _logger.LogWarning("Certificate {CertificateId} not found", id);
+            SerialNumber = serialNumber,
+            StudentId = request.StudentId,
+            CourseId = request.CourseId,
+            IssuedAt = DateTime.UtcNow
+        };
+
+        context.Certificates.Add(certificate);
+        await context.SaveChangesAsync(ct);
+
+        logger.LogInformation(
+            "Issued certificate {SerialNumber} to student {StudentId} for course {CourseId} record {CertificateId}",
+            serialNumber, request.StudentId, request.CourseId, certificate.Id);
+
+        return new CertificateResponseDto(certificate.Id, certificate.SerialNumber, certificate.IssuedAt, certificate.StudentId, certificate.CourseId);
+    }
+
+    public async Task<CertificateResponseDto?> GetByIdAsync(string id)
+    {
+        if (!int.TryParse(id, out var certificateId))
+        {
+            logger.LogWarning("Invalid certificate ID format {CertificateId}", id);
+            return null;
         }
 
-        return Task.FromResult(record);
+        var certificate = await context.Certificates
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == certificateId);
+
+        if(certificate is null)
+        {
+            logger.LogWarning("Certificate {CertificateId} not found", id);
+            return null;
+        }
+
+        return new CertificateResponseDto(
+            certificate.Id,
+            certificate.SerialNumber,
+            certificate.IssuedAt,
+            certificate.StudentId,
+            certificate.CourseId);
     }
 
-    public Task<IReadOnlyList<CertificateRecord>> GetAllAsync()
+    public async Task<IReadOnlyList<CertificateResponseDto>> GetAllAsync()
     {
-        IReadOnlyList<CertificateRecord> all = _store.Values.ToList();
-        return Task.FromResult(all);
+        var certificates = await context.Certificates
+            .AsNoTracking()
+            .ToListAsync();
+
+        var records = certificates
+            .Select(c => new CertificateResponseDto(
+                c.Id,
+                c.SerialNumber,
+                c.IssuedAt,
+                c.StudentId,
+                c.CourseId))
+            .ToList();
+
+        logger.LogInformation("Retrieved {Count} certificates", records.Count);
+        return records;
     }
 
-    public Task<bool> DeleteAsync(string id)
+    public async Task<bool> DeleteAsync(string id)
     {
-        var removed = _store.Remove(id);
+        if (!int.TryParse(id, out var certificateId))
+        {
+            logger.LogWarning("Invalid certificate ID format {CertificateId}", id);
+            return false;
+        }
 
-        if (removed)
-            _logger.LogInformation("Deleted certificate {CertificateId}", id);
-        else
-            _logger.LogWarning("Delete failed certificate {CertificateId} not found", id);
+        var certificate = await context.Certificates.FirstOrDefaultAsync(c => c.Id == certificateId);
+        
+        if(certificate is null)
+        {
+            logger.LogWarning("Delete failed certificate {CertificateId} not found", id);
+            return false;
+        }
 
-        return Task.FromResult(removed);
+        context.Certificates.Remove(certificate);
+        await context.SaveChangesAsync();
+
+        logger.LogInformation("Deleted certificate {CertificateId}", id);
+        return true;
     }
 }

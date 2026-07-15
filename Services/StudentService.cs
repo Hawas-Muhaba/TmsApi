@@ -1,62 +1,102 @@
+using Microsoft.EntityFrameworkCore;
+using TmsApi.Data;
+using TmsApi.Dtos;
+using TmsApi.Entities;
 
-public class StudentService : IStudentService
+public class StudentService(TmsDbContext context, ILogger<StudentService> logger) : IStudentService
 {
-    private readonly Dictionary<string, StudentRecord> _store = new();
-    private readonly ILogger<StudentService> _logger;
-
-    public StudentService(ILogger<StudentService> logger)
+    public async Task<StudentResponseDto> CreateAsync(CreateStudentRequest request, CancellationToken ct)
     {
-        _logger = logger;
-    }
+        var existing = await context.Students
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Name == request.Name && s.IsActive, ct);
 
-    public Task<StudentRecord> CreateAsync(string fullName, string email)
-    {
-        var existing = _store.Values.FirstOrDefault(s=> s.Email == email);
-
-        if(existing is not null)
+        if (existing is not null)
         {
-            _logger.LogWarning("Duplicate student registration attempt {Email} (record {StudentId})",
-            email, existing.Id);
-            return Task.FromResult(existing);
+            logger.LogWarning("Duplicate student registration attempt {FullName} {Email} (record {StudentId})",
+                request.Name, request.Email, existing.Id);
+            return new StudentResponseDto(existing.Id, existing.RegistrationNumber, existing.Name, existing.GPA, existing.IsActive, existing.LastUpdated);
         }
 
-        var id = Guid.NewGuid().ToString("N")[..8];
-        var record = new StudentRecord(id, fullName, email, DateTime.UtcNow);
-
-        _store[id] = record;
-        _logger.LogInformation("Created student {StudentId} {FullName} {Email}",
-        id, fullName, email);
-
-        return Task.FromResult(record);
-    }
-
-    public Task<StudentRecord?> GetByIdAsync(string id)
-    {
-        _store.TryGetValue(id, out var record);
-
-        if(record is null)
+        var student = new Student
         {
-            _logger.LogWarning("Student {StudentId} not found", id);
+            RegistrationNumber = $"STU-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6]}",
+            Name = request.Name,
+            GPA = 0m,
+            IsActive = true,
+            LastUpdated = DateTime.UtcNow,
+            Version = 1
+        };
+
+        context.Students.Add(student);
+        await context.SaveChangesAsync(ct);
+        
+        logger.LogInformation("Created student {StudentId} {FullName} {Email}",
+            student.Id, request.Name, request.Email);
+
+        return new StudentResponseDto(student.Id, student.RegistrationNumber, student.Name, student.GPA, student.IsActive, student.LastUpdated);
+    }
+
+    public async Task<StudentResponseDto?> GetByIdAsync(string id)
+    {
+        if (!int.TryParse(id, out var studentId))
+        {
+            logger.LogWarning("Invalid student ID format {StudentId}", id);
+            return null;
         }
-        return Task.FromResult(record);
+
+        var student = await context.Students
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == studentId);
+
+        if(student is null)
+        {
+            logger.LogWarning("Student {StudentId} not found", id);
+            return null;
+        }
+        
+        return new StudentResponseDto(student.Id, student.RegistrationNumber, student.Name, student.GPA, student.IsActive, student.LastUpdated);
     }
 
-    public Task<IReadOnlyList<StudentRecord>> GetAllAsync()
+    public async Task<IReadOnlyList<StudentResponseDto>> GetAllAsync()
     {
-        var records = _store.Values.ToList();
-        _logger.LogInformation("Retrieved {Count} students", records.Count);
-        return Task.FromResult<IReadOnlyList<StudentRecord>>(records);
+        var students = await context.Students
+            .AsNoTracking()
+            .ToListAsync();
+        
+        var records = students
+            .Select(s => new StudentResponseDto(s.Id, s.RegistrationNumber, s.Name, s.GPA, s.IsActive, s.LastUpdated))
+            .ToList();
+        
+        logger.LogInformation("Retrieved {Count} students", records.Count);
+        return records;
     }
 
-    public Task<bool> DeleteAsync(string id)
+    public async Task<bool> DeleteAsync(string id)
     {
-        var removed = _store.Remove(id);
+        if (!int.TryParse(id, out var studentId))
+        {
+            logger.LogWarning("Invalid student ID format {StudentId}", id);
+            return false;
+        }
 
-        if(removed)
-            _logger.LogInformation("deleted student {StudentId}", id);
-        else
-            _logger.LogWarning("Delete failed student {StudentId} not found", id);
-        return Task.FromResult(removed);
+        var student = await context.Students.FirstOrDefaultAsync(s => s.Id == studentId);
+        
+        if(student is null)
+        {
+            logger.LogWarning("Delete failed student {StudentId} not found", id);
+            return false;
+        }
+
+        student.IsDeleted = true;
+        student.IsActive = false;
+        student.LastUpdated = DateTime.UtcNow;
+        
+        context.Students.Update(student);
+        await context.SaveChangesAsync();
+
+        logger.LogInformation("Deleted student {StudentId}", id);
+        return true;
     }
-
 }
+    
