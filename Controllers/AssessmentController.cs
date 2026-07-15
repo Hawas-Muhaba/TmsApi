@@ -20,6 +20,16 @@ public class AssessmentsController(IAssessmentService assessmentService) : Contr
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateAssessmentRequest request, CancellationToken ct)
     {
+        if (await assessmentService.ExistsAsync(request.Title, request.CourseId, ct))
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Assessment already exists",
+                Detail = $"An assessment with title '{request.Title}' already exists for course {request.CourseId}.",
+                Status = StatusCodes.Status409Conflict
+            });
+        }
+
         var record = await assessmentService.CreateAsync(request, ct);
         return CreatedAtAction(nameof(GetById), new { id = record.Id }, record);
     }

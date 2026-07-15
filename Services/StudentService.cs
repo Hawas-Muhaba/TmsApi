@@ -37,6 +37,13 @@ public class StudentService(TmsDbContext context, ILogger<StudentService> logger
         return new StudentResponseDto(student.Id, student.RegistrationNumber, student.Name, student.GPA, student.IsActive, student.LastUpdated);
     }
 
+    public async Task<bool> ExistsAsync(string name, CancellationToken ct)
+    {
+        return await context.Students
+            .AsNoTracking()
+            .AnyAsync(s => s.Name == name && s.IsActive, ct);
+    }
+
     public async Task<StudentResponseDto?> GetByIdAsync(string id)
     {
         if (!int.TryParse(id, out var studentId))

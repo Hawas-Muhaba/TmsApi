@@ -4,6 +4,7 @@ using TmsApi.Dtos;
 public interface ICertificateService
 {
     Task<CertificateResponseDto> CreateAsync(CreateCertificateRequest request, CancellationToken ct);
+    Task<bool> ExistsAsync(int studentId, int courseId, CancellationToken ct);
     Task<CertificateResponseDto?> GetByIdAsync(string id);
     Task<IReadOnlyList<CertificateResponseDto>> GetAllAsync();
     Task<bool> DeleteAsync(string id);

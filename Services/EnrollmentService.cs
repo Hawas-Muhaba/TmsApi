@@ -34,6 +34,35 @@ public class EnrollmentService(TmsDbContext context, ILogger<EnrollmentService> 
             enrollment.EnrolledAt);
     }
 
+    public async Task<EnrollmentResponseDto> CreateAsync(int courseId, EnrollStudentRequest request, CancellationToken ct)
+    {
+        var enrollment = new Enrollment
+        {
+            CourseId = courseId,
+            StudentId = request.StudentId,
+            EnrolledAt = DateTime.UtcNow
+        };
+
+        context.Enrollments.Add(enrollment);
+        await context.SaveChangesAsync(ct);
+
+        logger.LogInformation(
+            "Enrolled student {StudentId} in course {CourseId} (enrollment {EnrollmentId})",
+            request.StudentId, courseId, enrollment.Id);
+
+        var course = await context.Courses
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == courseId, ct);
+
+        return new EnrollmentResponseDto(
+            enrollment.Id,
+            courseId,
+            course?.Code ?? "",
+            course?.Title ?? "",
+            request.StudentId,
+            enrollment.EnrolledAt);
+    }
+
     public async Task<EnrollmentResponseDto?> GetByIdAsync(int id, CancellationToken ct) 
     {
         var enrollment = await context.Enrollments
@@ -52,6 +81,30 @@ public class EnrollmentService(TmsDbContext context, ILogger<EnrollmentService> 
         return new EnrollmentResponseDto(
             enrollment.Id,
             enrollment.CourseId,
+            course?.Code ?? "",
+            course?.Title ?? "",
+            enrollment.StudentId,
+            enrollment.EnrolledAt);
+    }
+
+    public async Task<EnrollmentResponseDto?> GetByIdAsync(int courseId, int id, CancellationToken ct) 
+    {
+        var enrollment = await context.Enrollments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == id && e.CourseId == courseId, ct);
+
+        if (enrollment is null)
+        {
+            return null;
+        }
+
+        var course = await context.Courses
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == courseId, ct);
+
+        return new EnrollmentResponseDto(
+            enrollment.Id,
+            courseId,
             course?.Code ?? "",
             course?.Title ?? "",
             enrollment.StudentId,

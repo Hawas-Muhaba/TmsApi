@@ -19,6 +19,16 @@ public class StudentsController(IStudentService studentService) : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateStudentRequest request, CancellationToken ct)
     {
+        if (await studentService.ExistsAsync(request.Name, ct))
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Student already exists",
+                Detail = $"A student named '{request.Name}' is already registered.",
+                Status = StatusCodes.Status409Conflict
+            });
+        }
+
         var record = await studentService.CreateAsync(request, ct);
         return CreatedAtAction(nameof(GetById), new { id = record.Id }, record);
     }

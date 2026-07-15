@@ -19,6 +19,16 @@ public class CertificatesController(ICertificateService certificateService) : Co
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCertificateRequest request, CancellationToken ct)
     {
+        if (await certificateService.ExistsAsync(request.StudentId, request.CourseId, ct))
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Certificate already exists",
+                Detail = $"Student {request.StudentId} already has a certificate for course {request.CourseId}.",
+                Status = StatusCodes.Status409Conflict
+            });
+        }
+
         var record = await certificateService.CreateAsync(request, ct);
         return CreatedAtAction(nameof(GetById), new { id = record.Id }, record);
     }

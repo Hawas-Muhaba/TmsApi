@@ -25,6 +25,13 @@ public class AssessmentService(TmsDbContext context, ILogger<AssessmentService> 
         return new AssessmentResponseDto(assessment.Id, assessment.Title, assessment.MaxScore, assessment.Weight, assessment.CourseId);
     }
 
+    public async Task<bool> ExistsAsync(string title, int courseId, CancellationToken ct)
+    {
+        return await context.Assessments
+            .AsNoTracking()
+            .AnyAsync(a => a.Title == title && a.CourseId == courseId, ct);
+    }
+
     public async Task<AssessmentResponseDto?> GetByIdAsync(string id)
     {
         if (!int.TryParse(id, out var assessmentId))

@@ -40,6 +40,13 @@ public class CertificateService(TmsDbContext context, ILogger<CertificateService
         return new CertificateResponseDto(certificate.Id, certificate.SerialNumber, certificate.IssuedAt, certificate.StudentId, certificate.CourseId);
     }
 
+    public async Task<bool> ExistsAsync(int studentId, int courseId, CancellationToken ct)
+    {
+        return await context.Certificates
+            .AsNoTracking()
+            .AnyAsync(c => c.StudentId == studentId && c.CourseId == courseId, ct);
+    }
+
     public async Task<CertificateResponseDto?> GetByIdAsync(string id)
     {
         if (!int.TryParse(id, out var certificateId))
