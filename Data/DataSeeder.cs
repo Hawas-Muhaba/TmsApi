@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-namespace Tms.Api.Persistence;
+namespace TmsApi.Persistence;
 using TmsApi.Data;
 using TmsApi.Entities;
 public static class DataSeeder

@@ -5,7 +5,9 @@ using TmsApi.Data;
 using TmsApi.Entities;
 using TmsApi.Services;
 // using TmsApi.Services;
-
+// using TmsApi.IServices;
+using TmsApi.Persistence;
+using TmsApi.Filters;
 var builder = WebApplication.CreateBuilder(args);
 
 
@@ -22,7 +24,10 @@ builder.Services.AddOptions<PaymentOptions>()
         .ValidateDataAnnotations()
         .ValidateOnStart();
 
-
+builder.Services.AddControllers(options =>
+{
+options.Filters.Add<AuditLogFilter>();
+});
 builder.Services.AddAuthentication("Training")
     .AddScheme<AuthenticationSchemeOptions, TrainingAuthHandler>("Training", null);
 
@@ -123,5 +128,11 @@ using (var scope = app.Services.CreateScope())
 
         context.SaveChanges();
     }
+}
+if (app.Environment.IsDevelopment())
+{
+using var scope = app.Services.CreateScope();
+var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
+await DataSeeder.SeedAsync(context);
 }
 app.Run();

@@ -27,14 +27,63 @@ public class CourseService(TmsDbContext context, ILogger<CourseService> logger):
                         .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<IReadOnlyList<CourseRecord>> GetAllAsync()
+    // public async Task<IReadOnlyList<CourseRecord>> GetAllAsync()
+    // {
+    //     var courses = await context.Courses.AsNoTracking().ToListAsync();
+    //     var records = courses
+    //         .Select(c => new CourseRecord(c.Id.ToString(), c.Code, c.Title, 0, DateTime.UtcNow))
+    //         .ToList();
+    //     return records;
+    // }
+    public async Task<PagedResponse<CourseResponseDto>> GetCoursesAsync(
+PagedRequest request, CancellationToken ct)
     {
-        var courses = await context.Courses.AsNoTracking().ToListAsync();
-        var records = courses
-            .Select(c => new CourseRecord(c.Id.ToString(), c.Code, c.Title, 0, DateTime.UtcNow))
-            .ToList();
-        return records;
+        IQueryable<Course> query = context.Courses.AsNoTracking();
+        if(query is null)
+        {
+            logger.LogWarning("GetCoursesAsync query is null");
+            return new PagedResponse<CourseResponseDto>
+            {
+                Items = new List<CourseResponseDto>(),
+                TotalCount = 0,
+                Page = request.Page,
+                PageSize = request.PageSize
+            };
+        }
+        query = query.Where(c => EF.Functions.ILike(c.Title, $"%{request.Search}%"));
+        var totalCount = await query.CountAsync(ct);
+
+//         // TODO 4: Apply OrderBy, then Skip/Take, then Select projection.
+// // For OrderBy, branch on request.OrderBy ∈ { "Title", "Code", "
+// MaxCapacity" }
+// // and apply Descending if request.Descending. Reject unknown Ord
+// erBy values
+// // silently by falling back to "Title" never let an arbitrary st
+// ring
+// // into the LINQ tree.
+        query = request.OrderBy switch
+        {
+            "Code" => request.Descending ? query.OrderByDescending(c => c.Code) : query.OrderBy(c => c.Code),
+            "MaxCapacity" => request.Descending ? query.OrderByDescending(c => c.MaxCapacity) : query.OrderBy(c => c.MaxCapacity),
+            _ => request.Descending ? query.OrderByDescending(c => c.Title) : query.OrderBy(c => c.Title)
+        };
+
+        var courses = await query
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .Select(c => new CourseResponseDto(c.Id, c.Code, c.Title, c.MaxCapacity, c.Enrollments.Count))
+            .ToListAsync(ct);
+
+        return new PagedResponse<CourseResponseDto>
+        {
+            Items = courses,
+            TotalCount = totalCount,
+            Page = request.Page,
+            PageSize = request.PageSize
+        };
+        throw new NotImplementedException();
     }
+
 
     public async Task<bool> DeleteAsync(string id)
     {

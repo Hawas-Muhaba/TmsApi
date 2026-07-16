@@ -6,10 +6,17 @@ using TmsApi.Services;
 public class CoursesController(ICourseService courseService) : ControllerBase
 {
 // GET /api/courses
-[HttpGet]
-public async Task<IActionResult> GetAll()
-    => Ok(await courseService.GetAllAsync());
+// [HttpGet]
+// public async Task<IActionResult> GetAll()
+//     => Ok(await courseService.GetAllAsync());
 
+[HttpGet]
+public async Task<IActionResult> GetCourses(
+[FromQuery] PagedRequest request, CancellationToken ct)
+{
+var result = await courseService.GetCoursesAsync(request, ct);
+return Ok(result);
+}
 // GET /api/courses/{id}
 [HttpGet("{id:int}", Name = nameof(GetCourseById))]
 public async Task<IActionResult> GetCourseById(int id, CancellationToken ct)
