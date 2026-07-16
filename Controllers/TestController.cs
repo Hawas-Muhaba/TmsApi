@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Linq;
@@ -5,9 +6,15 @@ using TmsApi.Data;
 namespace TmsApi.Controllers;
 [ApiController]
 [Route("api/test")]
+[Tags("Test")]
+[Produces("application/json")]
+[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
 public class TestController(TmsDbContext context) : ControllerBase
 {
 [HttpGet("deferred")]
+[ProducesResponseType(typeof(IReadOnlyList<Student>), StatusCodes.Status200OK)]
+[EndpointSummary("Test deferred query execution")]
+[EndpointDescription("Demonstrates EF Core deferred execution by materializing a student query.")]
 public IActionResult TestDeferred()
 {
 Console.WriteLine("\n>>> STEP 1: Building the query object (nodatabase contact)...");
@@ -24,6 +31,10 @@ private static bool IsHonorRoll(decimal gpa)
 return gpa >= 3.5m;
 }
 [HttpGet("translation-fail")]
+[ProducesResponseType(typeof(IReadOnlyList<Student>), StatusCodes.Status200OK)]
+[ProducesResponseType(typeof(BadRequestObjectResult), StatusCodes.Status400BadRequest)]
+[EndpointSummary("Test query translation failure")]
+[EndpointDescription("Demonstrates an EF Core translation failure using a non-translatable method.")]
 public IActionResult TestTranslationFail()
 {
 Console.WriteLine("\n>>> STEP 1: Running non-translatable query...");
