@@ -67,6 +67,7 @@ app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapControllers();
 
 // app.MapGet("/api/assessments/results", ()=> Results.Ok(new
 // {
