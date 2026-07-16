@@ -9,8 +9,8 @@ public class StudentsController(IStudentService studentService) : ControllerBase
     public async Task<IActionResult> GetStudents([FromQuery] PagedRequest request, CancellationToken ct)
         => Ok(await studentService.GetStudentsAsync(request, ct));
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(string id)
+    [HttpGet("{id}", Name = nameof(GetStudentById))]
+    public async Task<IActionResult> GetStudentById(string id)
     {
         var record = await studentService.GetByIdAsync(id);
         return record is not null ? Ok(record) : NotFound();
@@ -30,7 +30,7 @@ public class StudentsController(IStudentService studentService) : ControllerBase
         }
 
         var record = await studentService.CreateAsync(request, ct);
-        return CreatedAtAction(nameof(GetById), new { id = record.Id }, record);
+        return CreatedAtAction(nameof(GetStudentById), new { id = record.Id }, record);
     }
 
     [HttpDelete("{id}")]

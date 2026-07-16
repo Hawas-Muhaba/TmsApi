@@ -9,8 +9,8 @@ public class CertificatesController(ICertificateService certificateService) : Co
     public async Task<IActionResult> GetCertificates([FromQuery] PagedRequest request, CancellationToken ct)
         => Ok(await certificateService.GetCertificatesAsync(request, ct));
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(string id)
+    [HttpGet("{id}", Name = nameof(GetCertificateById))]
+    public async Task<IActionResult> GetCertificateById(string id)
     {
         var record = await certificateService.GetByIdAsync(id);
         return record is not null ? Ok(record) : NotFound();
@@ -30,7 +30,7 @@ public class CertificatesController(ICertificateService certificateService) : Co
         }
 
         var record = await certificateService.CreateAsync(request, ct);
-        return CreatedAtAction(nameof(GetById), new { id = record.Id }, record);
+        return CreatedAtAction(nameof(GetCertificateById), new { id = record.Id }, record);
     }
 
     [HttpDelete("{id}")]

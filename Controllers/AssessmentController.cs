@@ -10,8 +10,8 @@ public class AssessmentsController(IAssessmentService assessmentService) : Contr
     public async Task<IActionResult> GetAssessments([FromQuery] PagedRequest request, CancellationToken ct)
         => Ok(await assessmentService.GetAssessmentsAsync(request, ct));
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(string id)
+    [HttpGet("{id}", Name = nameof(GetAssessmentById))]
+    public async Task<IActionResult> GetAssessmentById(string id)
     {
         var record = await assessmentService.GetByIdAsync(id);
         return record is not null ? Ok(record) : NotFound();
@@ -31,7 +31,7 @@ public class AssessmentsController(IAssessmentService assessmentService) : Contr
         }
 
         var record = await assessmentService.CreateAsync(request, ct);
-        return CreatedAtAction(nameof(GetById), new { id = record.Id }, record);
+        return CreatedAtAction(nameof(GetAssessmentById), new { id = record.Id }, record);
     }
 
     [HttpDelete("{id}")]
