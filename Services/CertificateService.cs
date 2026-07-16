@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using System.Threading;
 using TmsApi.Data;
 using TmsApi.Dtos;
 using TmsApi.Entities;
+namespace TmsApi.Services;
 
 public class CertificateService(TmsDbContext context, ILogger<CertificateService> logger) : ICertificateService
 {
@@ -45,6 +47,44 @@ public class CertificateService(TmsDbContext context, ILogger<CertificateService
         return await context.Certificates
             .AsNoTracking()
             .AnyAsync(c => c.StudentId == studentId && c.CourseId == courseId, ct);
+    }
+
+    public async Task<PagedResponse<CertificateResponseDto>> GetCertificatesAsync(PagedRequest request, CancellationToken ct)
+    {
+        IQueryable<Certificate> query = context.Certificates.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var pattern = $"%{request.Search}%";
+            query = query.Where(c => EF.Functions.ILike(c.SerialNumber, pattern));
+        }
+
+        var totalCount = await query.CountAsync(ct);
+        query = request.OrderBy switch
+        {
+            "IssuedAt" => request.Descending ? query.OrderByDescending(c => c.IssuedAt) : query.OrderBy(c => c.IssuedAt),
+            "CourseId" => request.Descending ? query.OrderByDescending(c => c.CourseId) : query.OrderBy(c => c.CourseId),
+            _ => request.Descending ? query.OrderByDescending(c => c.SerialNumber) : query.OrderBy(c => c.SerialNumber)
+        };
+
+        var certificates = await query
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .Select(c => new CertificateResponseDto(
+                c.Id,
+                c.SerialNumber,
+                c.IssuedAt,
+                c.StudentId,
+                c.CourseId))
+            .ToListAsync(ct);
+
+        return new PagedResponse<CertificateResponseDto>
+        {
+            Items = certificates,
+            TotalCount = totalCount,
+            Page = request.Page,
+            PageSize = request.PageSize
+        };
     }
 
     public async Task<CertificateResponseDto?> GetByIdAsync(string id)
@@ -114,4 +154,7 @@ public class CertificateService(TmsDbContext context, ILogger<CertificateService
         logger.LogInformation("Deleted certificate {CertificateId}", id);
         return true;
     }
+
+    // Explicit interface implementation to ensure interface contract is satisfied.
+    
 }

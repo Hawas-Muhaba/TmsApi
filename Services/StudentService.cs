@@ -44,6 +44,45 @@ public class StudentService(TmsDbContext context, ILogger<StudentService> logger
             .AnyAsync(s => s.Name == name && s.IsActive, ct);
     }
 
+    public async Task<PagedResponse<StudentResponseDto>> GetStudentsAsync(PagedRequest request, CancellationToken ct)
+    {
+        IQueryable<Student> query = context.Students.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var pattern = $"%{request.Search}%";
+            query = query.Where(s => EF.Functions.ILike(s.Name, pattern) || EF.Functions.ILike(s.RegistrationNumber, pattern));
+        }
+
+        var totalCount = await query.CountAsync(ct);
+        query = request.OrderBy switch
+        {
+            "RegistrationNumber" => request.Descending ? query.OrderByDescending(s => s.RegistrationNumber) : query.OrderBy(s => s.RegistrationNumber),
+            "GPA" => request.Descending ? query.OrderByDescending(s => s.GPA) : query.OrderBy(s => s.GPA),
+            _ => request.Descending ? query.OrderByDescending(s => s.Name) : query.OrderBy(s => s.Name)
+        };
+
+        var students = await query
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .Select(s => new StudentResponseDto(
+                s.Id,
+                s.RegistrationNumber,
+                s.Name,
+                s.GPA,
+                s.IsActive,
+                s.LastUpdated))
+            .ToListAsync(ct);
+
+        return new PagedResponse<StudentResponseDto>
+        {
+            Items = students,
+            TotalCount = totalCount,
+            Page = request.Page,
+            PageSize = request.PageSize
+        };
+    }
+
     public async Task<StudentResponseDto?> GetByIdAsync(string id)
     {
         if (!int.TryParse(id, out var studentId))
@@ -65,20 +104,7 @@ public class StudentService(TmsDbContext context, ILogger<StudentService> logger
         return new StudentResponseDto(student.Id, student.RegistrationNumber, student.Name, student.GPA, student.IsActive, student.LastUpdated);
     }
 
-    public async Task<IReadOnlyList<StudentResponseDto>> GetAllAsync()
-    {
-        var students = await context.Students
-            .AsNoTracking()
-            .ToListAsync();
-        
-        var records = students
-            .Select(s => new StudentResponseDto(s.Id, s.RegistrationNumber, s.Name, s.GPA, s.IsActive, s.LastUpdated))
-            .ToList();
-        
-        logger.LogInformation("Retrieved {Count} students", records.Count);
-        return records;
-    }
-
+    
     public async Task<bool> DeleteAsync(string id)
     {
         if (!int.TryParse(id, out var studentId))

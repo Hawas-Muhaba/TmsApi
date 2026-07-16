@@ -10,6 +10,10 @@ public class EnrollmentsController(
     ICourseService courseService,
     IEnrollmentService enrollmentService) : ControllerBase
 {
+    [HttpGet]
+    public async Task<IActionResult> GetEnrollments(int courseId, [FromQuery] PagedRequest request, CancellationToken ct)
+        => Ok(await enrollmentService.GetEnrollmentsAsync(courseId, request, ct));
+
     [HttpGet("{id:int}", Name = nameof(GetEnrollment))]
     public async Task<IActionResult> GetEnrollment(int courseId, int id, CancellationToken ct)
     {

@@ -111,6 +111,48 @@ public class EnrollmentService(TmsDbContext context, ILogger<EnrollmentService> 
             enrollment.EnrolledAt);
     }
 
+    public async Task<PagedResponse<EnrollmentResponseDto>> GetEnrollmentsAsync(int courseId, PagedRequest request, CancellationToken ct)
+    {
+        IQueryable<Enrollment> query = context.Enrollments
+            .AsNoTracking()
+            .Where(e => e.CourseId == courseId)
+            .Include(e => e.Course);
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var pattern = $"%{request.Search}%";
+            query = query.Where(e => EF.Functions.ILike(e.Course.Code, pattern) || EF.Functions.ILike(e.Course.Title, pattern));
+        }
+
+        var totalCount = await query.CountAsync(ct);
+        query = request.OrderBy switch
+        {
+            "StudentId" => request.Descending ? query.OrderByDescending(e => e.StudentId) : query.OrderBy(e => e.StudentId),
+            "EnrolledAt" => request.Descending ? query.OrderByDescending(e => e.EnrolledAt) : query.OrderBy(e => e.EnrolledAt),
+            _ => request.Descending ? query.OrderByDescending(e => e.Id) : query.OrderBy(e => e.Id)
+        };
+
+        var enrollments = await query
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .Select(e => new EnrollmentResponseDto(
+                e.Id,
+                e.CourseId,
+                e.Course != null ? e.Course.Code : "",
+                e.Course != null ? e.Course.Title : "",
+                e.StudentId,
+                e.EnrolledAt))
+            .ToListAsync(ct);
+
+        return new PagedResponse<EnrollmentResponseDto>
+        {
+            Items = enrollments,
+            TotalCount = totalCount,
+            Page = request.Page,
+            PageSize = request.PageSize
+        };
+    }
+
     public async Task<IReadOnlyList<EnrollmentResponseDto>> GetAllAsync()
     {
         var enrollments = await context.Enrollments

@@ -5,6 +5,7 @@ public interface ICertificateService
 {
     Task<CertificateResponseDto> CreateAsync(CreateCertificateRequest request, CancellationToken ct);
     Task<bool> ExistsAsync(int studentId, int courseId, CancellationToken ct);
+    Task<PagedResponse<CertificateResponseDto>> GetCertificatesAsync(PagedRequest request, CancellationToken ct);
     Task<CertificateResponseDto?> GetByIdAsync(string id);
     Task<IReadOnlyList<CertificateResponseDto>> GetAllAsync();
     Task<bool> DeleteAsync(string id);

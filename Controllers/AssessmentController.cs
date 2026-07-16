@@ -7,8 +7,8 @@ using TmsApi.Dtos;
 public class AssessmentsController(IAssessmentService assessmentService) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetAll()
-        => Ok(await assessmentService.GetAllAsync());
+    public async Task<IActionResult> GetAssessments([FromQuery] PagedRequest request, CancellationToken ct)
+        => Ok(await assessmentService.GetAssessmentsAsync(request, ct));
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(string id)

@@ -32,6 +32,44 @@ public class AssessmentService(TmsDbContext context, ILogger<AssessmentService> 
             .AnyAsync(a => a.Title == title && a.CourseId == courseId, ct);
     }
 
+    public async Task<PagedResponse<AssessmentResponseDto>> GetAssessmentsAsync(PagedRequest request, CancellationToken ct)
+    {
+        IQueryable<Assessment> query = context.Assessments.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var pattern = $"%{request.Search}%";
+            query = query.Where(a => EF.Functions.ILike(a.Title, pattern));
+        }
+
+        var totalCount = await query.CountAsync(ct);
+        query = request.OrderBy switch
+        {
+            "MaxScore" => request.Descending ? query.OrderByDescending(a => a.MaxScore) : query.OrderBy(a => a.MaxScore),
+            "Weight" => request.Descending ? query.OrderByDescending(a => a.Weight) : query.OrderBy(a => a.Weight),
+            _ => request.Descending ? query.OrderByDescending(a => a.Title) : query.OrderBy(a => a.Title)
+        };
+
+        var assessments = await query
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .Select(a => new AssessmentResponseDto(
+                a.Id,
+                a.Title,
+                a.MaxScore,
+                a.Weight,
+                a.CourseId))
+            .ToListAsync(ct);
+
+        return new PagedResponse<AssessmentResponseDto>
+        {
+            Items = assessments,
+            TotalCount = totalCount,
+            Page = request.Page,
+            PageSize = request.PageSize
+        };
+    }
+
     public async Task<AssessmentResponseDto?> GetByIdAsync(string id)
     {
         if (!int.TryParse(id, out var assessmentId))

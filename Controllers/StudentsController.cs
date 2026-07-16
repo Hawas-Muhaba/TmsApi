@@ -6,8 +6,8 @@ using TmsApi.Dtos;
 public class StudentsController(IStudentService studentService) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetAll()
-        => Ok(await studentService.GetAllAsync());
+    public async Task<IActionResult> GetStudents([FromQuery] PagedRequest request, CancellationToken ct)
+        => Ok(await studentService.GetStudentsAsync(request, ct));
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(string id)
