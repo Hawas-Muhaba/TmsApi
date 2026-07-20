@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using TmsApi.Application.DTOs;
 using TmsApi.Application.Interfaces;
-
+namespace TmsApi.Api.Controllers;
 [ApiController]
 [Route("api/certificates")]
 [Tags("Certificates")]

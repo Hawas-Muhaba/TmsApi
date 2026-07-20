@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Linq;
 using TmsApi.Infrastructure.Persistence;
-namespace TmsApi.Controllers;
+namespace TmsApi.Api.Controllers;
 [ApiController]
 [Route("api/test")]
 [Tags("Test")]
