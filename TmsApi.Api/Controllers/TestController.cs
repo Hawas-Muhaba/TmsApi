@@ -1,0 +1,54 @@
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Linq;
+using TmsApi.Infrastructure.Persistence;
+namespace TmsApi.Controllers;
+[ApiController]
+[Route("api/test")]
+[Tags("Test")]
+[Produces("application/json")]
+[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+public class TestController(TmsDbContext context) : ControllerBase
+{
+[HttpGet("deferred")]
+[ProducesResponseType(typeof(IReadOnlyList<Student>), StatusCodes.Status200OK)]
+[EndpointSummary("Test deferred query execution")]
+[EndpointDescription("Demonstrates EF Core deferred execution by materializing a student query.")]
+public IActionResult TestDeferred()
+{
+Console.WriteLine("\n>>> STEP 1: Building the query object (nodatabase contact)...");
+var query = context.Students.Where(s => s.GPA >= 3.0m);
+Console.WriteLine(">>> STEP 2: Appending a sorting clause...");
+var orderedQuery = query.OrderBy(s => s.Name);
+Console.WriteLine(">>> STEP 3: Materializing query into a C# List...");
+var results = orderedQuery.ToList(); // Execution is triggeredhere
+Console.WriteLine(">>> STEP 4: Materialization finished. List populated.\n");
+return Ok(results);
+}
+private static bool IsHonorRoll(decimal gpa)
+{
+return gpa >= 3.5m;
+}
+[HttpGet("translation-fail")]
+[ProducesResponseType(typeof(IReadOnlyList<Student>), StatusCodes.Status200OK)]
+[ProducesResponseType(typeof(BadRequestObjectResult), StatusCodes.Status400BadRequest)]
+[EndpointSummary("Test query translation failure")]
+[EndpointDescription("Demonstrates an EF Core translation failure using a non-translatable method.")]
+public IActionResult TestTranslationFail()
+{
+Console.WriteLine("\n>>> STEP 1: Running non-translatable query...");
+try
+{
+var students = context.Students
+.Where(s => IsHonorRoll(s.GPA)) // EF Core does not know how to map this method to SQL
+.ToList();
+return Ok(students);
+}
+catch (Exception ex)
+{
+Console.WriteLine($">>> EXCEPTION CAUGHT: {ex.Message}\n");
+return BadRequest(new { Message = ex.Message });
+}
+}
+}
