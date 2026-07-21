@@ -5,7 +5,7 @@ using TmsApi.Application.Interfaces;
 using TmsApi.Domain.Entities;
 using TmsApi.Infrastructure.Persistence;
 
-namespace TmsApi.Infrastructure.Persistence;
+namespace TmsApi.Infrastructure.Services;
 
 public class EnrollmentService(TmsDbContext context, ILogger<EnrollmentService> logger) : IEnrollmentService
 {
@@ -65,6 +65,45 @@ public class EnrollmentService(TmsDbContext context, ILogger<EnrollmentService> 
             course?.Title ?? "",
             request.StudentId,
             enrollment.EnrolledAt);
+    }
+
+    public async Task AddAsync(Enrollment enrollment, CancellationToken ct)
+    {
+        context.Enrollments.Add(enrollment);
+        await context.SaveChangesAsync(ct);
+    }
+
+    public async Task<bool> ExistsAsync(int studentId, string courseCode, CancellationToken ct)
+    {
+        var course = await context.Courses.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Code == courseCode, ct);
+
+        if (course is null)
+        {
+            return false;
+        }
+
+        return await context.Enrollments.AsNoTracking()
+            .AnyAsync(e => e.StudentId == studentId && e.CourseId == course.Id, ct);
+    }
+
+    public async Task<IReadOnlyList<EnrollmentResponseDto>> GetByStudentIdAsync(int studentId, CancellationToken ct)
+    {
+        var enrollments = await context.Enrollments
+            .AsNoTracking()
+            .Where(e => e.StudentId == studentId)
+            .Include(e => e.Course)
+            .ToListAsync(ct);
+
+        return enrollments
+            .Select(e => new EnrollmentResponseDto(
+                e.Id,
+                e.CourseId,
+                e.Course?.Code ?? "",
+                e.Course?.Title ?? "",
+                e.StudentId,
+                e.EnrolledAt))
+            .ToList();
     }
 
     public async Task<EnrollmentResponseDto?> GetByIdAsync(int id, CancellationToken ct) 

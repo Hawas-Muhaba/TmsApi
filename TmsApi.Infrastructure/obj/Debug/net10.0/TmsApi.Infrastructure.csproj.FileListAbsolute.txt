@@ -1,4 +1,5 @@
 C:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Infrastructure\bin\Debug\net10.0\TmsApi.Infrastructure.deps.json
+C:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Infrastructure\bin\Debug\net10.0\TmsApi.Infrastructure.runtimeconfig.json
 C:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Infrastructure\bin\Debug\net10.0\TmsApi.Infrastructure.dll
 C:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Infrastructure\bin\Debug\net10.0\TmsApi.Infrastructure.pdb
 C:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Infrastructure\bin\Debug\net10.0\TmsApi.Application.dll
@@ -15,6 +16,5 @@ C:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Infrastructure\obj\D
 C:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Infrastructure\obj\Debug\net10.0\TmsApi.Infrastructure.dll
 C:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Infrastructure\obj\Debug\net10.0\refint\TmsApi.Infrastructure.dll
 C:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Infrastructure\obj\Debug\net10.0\TmsApi.Infrastructure.pdb
-C:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Infrastructure\obj\Debug\net10.0\ref\TmsApi.Infrastructure.dll
-C:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Infrastructure\bin\Debug\net10.0\TmsApi.Infrastructure.runtimeconfig.json
 C:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Infrastructure\obj\Debug\net10.0\TmsApi.Infrastructure.genruntimeconfig.cache
+C:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Infrastructure\obj\Debug\net10.0\ref\TmsApi.Infrastructure.dll

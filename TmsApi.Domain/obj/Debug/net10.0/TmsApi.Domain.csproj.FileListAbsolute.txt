@@ -1,4 +1,4 @@
-c:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Domain\bin\Debug\net10.0\TmsApi.Domain.deps.json
+C:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Domain\bin\Debug\net10.0\TmsApi.Domain.deps.json
 C:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Domain\bin\Debug\net10.0\TmsApi.Domain.dll
 C:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Domain\bin\Debug\net10.0\TmsApi.Domain.pdb
 C:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Domain\obj\Debug\net10.0\TmsApi.Domain.GeneratedMSBuildEditorConfig.editorconfig
@@ -9,4 +9,4 @@ C:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Domain\obj\Debug\net
 C:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Domain\obj\Debug\net10.0\TmsApi.Domain.dll
 C:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Domain\obj\Debug\net10.0\refint\TmsApi.Domain.dll
 C:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Domain\obj\Debug\net10.0\TmsApi.Domain.pdb
-c:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Domain\obj\Debug\net10.0\ref\TmsApi.Domain.dll
+C:\Users\hp\Documents\Projects\tms api\TmsApi\TmsApi\TmsApi.Domain\obj\Debug\net10.0\ref\TmsApi.Domain.dll

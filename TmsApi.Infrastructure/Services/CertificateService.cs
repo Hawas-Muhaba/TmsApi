@@ -5,7 +5,7 @@ using TmsApi.Application.Interfaces;
 using TmsApi.Domain.Entities;
 using TmsApi.Infrastructure.Persistence;
 
-namespace TmsApi.Infrastructure.Persistence;
+namespace TmsApi.Infrastructure.Services;
 
 public class CertificateService(TmsDbContext context, ILogger<CertificateService> logger) : ICertificateService
 {

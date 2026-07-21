@@ -22,8 +22,5 @@
     <ProjectReference Include="..\TmsApi.Infrastructure\TmsApi.Infrastructure.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Include="..\Filters\AuditLogFilter.cs" Link="Filters\AuditLogFilter.cs" />
-  </ItemGroup>
 
 </Project>

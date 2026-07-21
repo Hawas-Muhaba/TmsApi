@@ -5,7 +5,7 @@ using TmsApi.Application.Interfaces;
 using TmsApi.Domain.Entities;
 using TmsApi.Infrastructure.Persistence;
 
-namespace TmsApi.Infrastructure.Persistence;
+namespace TmsApi.Infrastructure.Services;
 
 public class CourseService(TmsDbContext context, ILogger<CourseService> logger): ICourseService
 {
@@ -28,6 +28,14 @@ public class CourseService(TmsDbContext context, ILogger<CourseService> logger):
         return await context.Courses.AsNoTracking().Where(c=>c.Id == id)
                         .Select(c=> new CourseResponseDto(c.Id, c.Code, c.Title, c.MaxCapacity, c.Enrollments.Count))
                         .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<CourseResponseDto?> GetByCodeAsync(string code, CancellationToken ct)
+    {
+        return await context.Courses.AsNoTracking()
+            .Where(c => c.Code == code)
+            .Select(c => new CourseResponseDto(c.Id, c.Code, c.Title, c.MaxCapacity, c.Enrollments.Count))
+            .FirstOrDefaultAsync(ct);
     }
 
     // public async Task<IReadOnlyList<CourseRecord>> GetAllAsync()

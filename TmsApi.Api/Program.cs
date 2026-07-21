@@ -1,18 +1,35 @@
 using Microsoft.AspNetCore.Authentication;
 using Scalar.AspNetCore;
 using Microsoft.EntityFrameworkCore;
+using TmsApi.Application.Enrollments.Commands;
 using TmsApi.Application.Interfaces;
 using TmsApi.Domain.Entities;
 using TmsApi.Infrastructure.Persistence;
-// using TmsApi.Infrastructure.Persistence;
+using TmsApi.Infrastructure.Services;
 using TmsApi.Persistence;
 using TmsApi.Filters;
 using TmsApi.Middleware;
 using Asp.Versioning;
 using TmsApi.Application.Services;
+using TmsApi.Application.Behaviors;
+// add validator assembly
+using FluentValidation;
+//  add transient pipeline behaviors
+using MediatR;
+//  add exception handler
+using TmsApi.Api.ExceptionHandlers;
+
+
 var builder = WebApplication.CreateBuilder(args);
 
-
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(typeof(EnrollStudentHandler).Assembly));
+builder.Services.AddValidatorsFromAssembly(typeof(EnrollStudentValidator).Assembly);
+// LoggingBehavior FIRST—it must wrap ValidationBehavior
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 builder.Services.AddProblemDetails();   
 builder.Services.AddSingleton<EnrollmentWorker>();
 builder.Services.AddScoped<IStudentService, StudentService>();
@@ -106,7 +123,7 @@ app.MapGet("/api/enrollments/parallel-test", async (EnrollmentWorker worker) =>
 
 app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseMiddleware<V1DeprecationMiddleware>();
-
+app.UseExceptionHandler();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
