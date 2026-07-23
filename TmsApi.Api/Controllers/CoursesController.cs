@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using MediatR;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using TmsApi.Application.Common;
 using TmsApi.Application.Courses.Commands;
@@ -24,6 +25,7 @@ public class CoursesController(IMediator mediator, LinkGenerator linkGenerator) 
     //     => Ok(await courseService.GetAllAsync());
 
     [HttpGet]
+    [EnableRateLimiting("search")]
     [ProducesResponseType(typeof(PagedResponse<CourseResponseDto>), StatusCodes.Status200OK)]
     [EndpointSummary("List courses with pagination")]
     [EndpointDescription("Returns a paginated, optionally filtered list of TMS courses. PageSize is capped at 50.")]
