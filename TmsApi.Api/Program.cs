@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Scalar.AspNetCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 using TmsApi.Application.Enrollments.Commands;
 using TmsApi.Application.Interfaces;
 using TmsApi.Domain.Entities;
@@ -42,7 +43,14 @@ builder.Services.AddOptions<PaymentOptions>()
         .BindConfiguration("Payments")
         .ValidateDataAnnotations()
         .ValidateOnStart();
-
+builder.Services.AddHybridCache(options =>
+{
+    options.DefaultEntryOptions = new HybridCacheEntryOptions
+    {
+        Expiration = TimeSpan.FromMinutes(10),
+        LocalCacheExpiration = TimeSpan.FromMinutes(2)
+    };
+});
 builder.Services.AddControllers(options =>
 {
 options.Filters.Add<AuditLogFilter>();

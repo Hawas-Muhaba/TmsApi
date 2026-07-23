@@ -38,14 +38,14 @@ public class CourseService(TmsDbContext context, ILogger<CourseService> logger):
             .FirstOrDefaultAsync(ct);
     }
 
-    // public async Task<IReadOnlyList<CourseRecord>> GetAllAsync()
-    // {
-    //     var courses = await context.Courses.AsNoTracking().ToListAsync();
-    //     var records = courses
-    //         .Select(c => new CourseRecord(c.Id.ToString(), c.Code, c.Title, 0, DateTime.UtcNow))
-    //         .ToList();
-    //     return records;
-    // }
+    public async Task<IReadOnlyList<CourseRecord>> GetAllAsync()
+    {
+        var courses = await context.Courses.AsNoTracking().ToListAsync();
+        var records = courses
+            .Select(c => new CourseRecord(c.Id.ToString(), c.Code, c.Title, 0, DateTime.UtcNow))
+            .ToList();
+        return records;
+    }
     public async Task<PagedResponse<CourseResponseDto>> GetCoursesAsync(
 PagedRequest request, CancellationToken ct)
     {
