@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using MediatR;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using TmsApi.Application.Certificates.Commands;
 using TmsApi.Application.Certificates.Queries;
@@ -9,6 +10,7 @@ using TmsApi.Application.DTOs;
 namespace TmsApi.Api.Controllers;
 
 [ApiController]
+[EnableRateLimiting("certificates")]
 [Route("api/v{version:apiVersion}/certificates")]
 [ApiVersion("2.0")]
 [Tags("Certificates")]

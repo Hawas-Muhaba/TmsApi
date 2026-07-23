@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using MediatR;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using TmsApi.Application.Common;
 using TmsApi.Application.DTOs;
@@ -9,6 +10,7 @@ using TmsApi.Application.Students.Queries;
 namespace TmsApi.Api.Controllers;
 
 [ApiController]
+[EnableRateLimiting("students")]
 [Route("api/v{version:apiVersion}/students")]
 [ApiVersion("2.0")]
 [Tags("Students")]

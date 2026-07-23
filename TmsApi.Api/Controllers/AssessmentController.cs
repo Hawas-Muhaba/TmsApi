@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using MediatR;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TmsApi.Application.Assessments.Commands;
@@ -10,6 +11,7 @@ using TmsApi.Application.DTOs;
 namespace TmsApi.Api.Controllers;
 
 [ApiController]
+[EnableRateLimiting("assessments")]
 [Route("api/v{version:apiVersion}/assessments")]
 [ApiVersion("2.0")]
 [Tags("Assessments")]

@@ -30,6 +30,46 @@ public static class RateLimiterConfiguration
             opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
             opt.AutoReplenishment = true;
         });
+
+        options.AddTokenBucketLimiter("students", opt =>
+        {
+            opt.TokenLimit = 15;
+            opt.TokensPerPeriod = 7;
+            opt.ReplenishmentPeriod = TimeSpan.FromSeconds(10);
+            opt.QueueLimit = 5;
+            opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+            opt.AutoReplenishment = true;
+        });
+
+        options.AddTokenBucketLimiter("certificates", opt =>
+        {
+            opt.TokenLimit = 15;
+            opt.TokensPerPeriod = 7;
+            opt.ReplenishmentPeriod = TimeSpan.FromSeconds(10);
+            opt.QueueLimit = 5;
+            opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+            opt.AutoReplenishment = true;
+        });
+
+        options.AddTokenBucketLimiter("assessments", opt =>
+        {
+            opt.TokenLimit = 15;
+            opt.TokensPerPeriod = 7;
+            opt.ReplenishmentPeriod = TimeSpan.FromSeconds(10);
+            opt.QueueLimit = 5;
+            opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+            opt.AutoReplenishment = true;
+        });
+
+        options.AddTokenBucketLimiter("enrollments", opt =>
+        {
+            opt.TokenLimit = 10;
+            opt.TokensPerPeriod = 5;
+            opt.ReplenishmentPeriod = TimeSpan.FromSeconds(10);
+            opt.QueueLimit = 3;
+            opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+            opt.AutoReplenishment = true;
+        });
     }
 
     private static RateLimitPartition<string> CreateLimiter(HttpContext httpContext)

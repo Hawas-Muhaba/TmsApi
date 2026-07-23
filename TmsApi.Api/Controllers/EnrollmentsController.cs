@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using MediatR;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using TmsApi.Application.Enrollments.Commands;
 using TmsApi.Application.Enrollments.Queries;
@@ -7,6 +8,7 @@ using TmsApi.Application.Enrollments.Queries;
 namespace TmsApi.Api.Controllers;
 
 [ApiController]
+[EnableRateLimiting("enrollments")]
 [Route("api/v{version:apiVersion}/enrollments")]
 [ApiVersion("2.0")]
 [Tags("Enrollments")]
