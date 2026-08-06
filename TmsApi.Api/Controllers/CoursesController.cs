@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.Http;
 namespace TmsApi.Api.Controllers;
 
 [ApiController]
-[Route("api/v{version:apiVersion}/courses")]
+[Route("api/courses")]
 [ApiVersion("2.0")]
 [Tags("Courses")]
 [Produces("application/json")]

@@ -80,10 +80,16 @@ builder.Services.AddOpenApi("v2", options =>
     options.ShouldInclude = description => 
     description.GroupName == "v2";
 });
-
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAngular", policy =>
+    policy.WithOrigins("http://localhost:4200")
+    .AllowAnyHeader()
+    .AllowAnyMethod());
+});
 builder.Services.AddApiVersioning(options =>
 {
-    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.DefaultApiVersion = new ApiVersion(2, 0);
     options.AssumeDefaultVersionWhenUnspecified = true;
     options.ReportApiVersions = true;
     options.ApiVersionReader = new UrlSegmentApiVersionReader();
@@ -101,7 +107,7 @@ options.SubstituteApiVersionInUrl = true;
 var app = builder.Build();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
-
+app.UseCors("AllowAngular");
 if(app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
