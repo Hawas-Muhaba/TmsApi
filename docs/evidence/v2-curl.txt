@@ -1,0 +1,6 @@
+PS> curl.exe -i http://localhost:5123/api/v2/courses
+HTTP/1.1 200 OK
+Content-Type: application/json; charset=utf-8
+api-supported-versions: 1.0, 2.0
+
+{"data":[{"id":14,"title":"Advanced SQL and Indexing","code":"DAT-201","maxCapacity":26,"enrollmentCount":0}],"meta":{"totalCount":26,"page":1,"pageSize":20,"totalPages":2,"hasNext":true,"hasPrevious":false},"links":{"self":"/api/v2/courses?page=1&pageSize=20","next":"/api/v2/courses?page=2&pageSize=20","prev":null,"enroll":"/api/v2/enrollments"}}

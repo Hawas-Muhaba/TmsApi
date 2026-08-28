@@ -59,7 +59,3 @@ public class EnrollmentsController(IMediator mediator) : ControllerBase
         return Ok(schedule);
     }
 }
-
-public record EnrollmentCreated(int EnrollmentId, int StudentId, string CourseCode);
-public record ScheduleDto(int StudentId, List<ScheduleItemDto> Courses);
-public record ScheduleItemDto(string CourseCode, string Title, string Schedule);

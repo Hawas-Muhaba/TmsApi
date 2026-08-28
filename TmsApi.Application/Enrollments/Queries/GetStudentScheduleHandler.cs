@@ -11,7 +11,7 @@ GetStudentScheduleQuery query, CancellationToken ct)
     var items = enrollments.Select(e => new ScheduleItemDto(
         e.CourseCode,
         e.CourseTitle,
-        "TDB")).ToList();  
+        "TBD")).ToList();
     return new ScheduleDto(query.StudentId, items);
 
     }

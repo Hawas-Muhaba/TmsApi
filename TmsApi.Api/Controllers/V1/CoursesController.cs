@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 namespace TmsApi.Controllers.V1;
 using TmsApi.Infrastructure.Persistence;
 [ApiController]
-[Route("api/legacy/v{version:apiVersion}/courses")]
+[Route("api/v{version:apiVersion}/courses")]
 [ApiVersion("1.0")]
 public class CoursesController(TmsDbContext context) : ControllerBase
 {

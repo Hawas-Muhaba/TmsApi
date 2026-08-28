@@ -1,0 +1,9 @@
+PS> curl.exe -i http://localhost:5123/api/v1/courses
+HTTP/1.1 200 OK
+Content-Type: application/json; charset=utf-8
+api-supported-versions: 1.0, 2.0
+Deprecation: true
+Sunset: Thu, 31 Dec 2026 00:00:00 GMT
+Link: <http://localhost:5123/api/v2/courses>; rel="successor-version"
+
+{"items":[{"id":14,"code":"DAT-201","title":"Advanced SQL and Indexing","maxCapacity":26,"enrollmentCount":0}],"totalCount":26,"page":1,"pageSize":20,"totalPages":2,"hasNext":true,"hasPrevious":false}
