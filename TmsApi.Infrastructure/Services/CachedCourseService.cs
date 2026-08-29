@@ -6,7 +6,7 @@ using TmsApi.Infrastructure.Caching;
 
 namespace TmsApi.Infrastructure.Services;
 
-public class CachedCourseService
+public class CachedCourseService : ICachedCourseService
 {
     private readonly HybridCache _cache;
     private readonly ICourseService _service;
@@ -22,14 +22,16 @@ public class CachedCourseService
         _logger = logger;
     }
 
-    public async Task<CourseResponseDto> GetCourseAsync(string code, CancellationToken cancellationToken)
+    public async Task<CourseResponseDto?> GetCourseAsync(string code, CancellationToken cancellationToken)
     {
         var key = CacheKeys.Course(code);
+        var dbHit = false;
 
         var dto = await _cache.GetOrCreateAsync<CourseResponseDto>(
             key,
             async (token) =>
             {
+                dbHit = true;
                 _logger.LogInformation("Cache MISS for {Key} fetching from DB", key);
                 var course = await _service.GetByCodeAsync(code, token);
                 
@@ -46,7 +48,8 @@ public class CachedCourseService
             tags: [CacheKeys.CoursesTag],
             cancellationToken: cancellationToken);
 
-        _logger.LogInformation("Cache HIT for {Key}", key);
+        if (!dbHit)
+            _logger.LogInformation("Cache HIT for {Key}", key);
         return dto;
     }
 
@@ -54,16 +57,20 @@ public class CachedCourseService
     {
         var key = CacheKeys.CoursesAll;
 
+        var dbHit = false;
         var list = await _cache.GetOrCreateAsync<List<CourseResponseDto>>(
             key,
             async (token) =>
             {
+                dbHit = true;
                 _logger.LogInformation("Cache MISS for {Key} fetching from DB", key);
-                var request = new PagedRequest { Page = 1, PageSize = 1000 };
-                var pagedResult = await _service.GetCoursesAsync(request, token);
-                
-                _logger.LogInformation("Retrieved {Count} courses from database for {Key}", pagedResult.Items.Count, key);
-                return pagedResult.Items.ToList();
+                var courses = await _service.GetAllAsync();
+                var result = courses.Select(course => new CourseResponseDto(
+                    int.Parse(course.Id), course.Code, course.Title,
+                    course.MaxCapacity, course.EnrollmentCount)).ToList();
+
+                _logger.LogInformation("Retrieved {Count} courses from database for {Key}", result.Count, key);
+                return result;
             },
             new HybridCacheEntryOptions
             {
@@ -72,7 +79,8 @@ public class CachedCourseService
             tags: [CacheKeys.CoursesTag],
             cancellationToken: cancellationToken);
 
-        _logger.LogInformation("Cache HIT for {Key}", key);
+        if (!dbHit)
+            _logger.LogInformation("Cache HIT for {Key}", key);
         return list;
     }
 

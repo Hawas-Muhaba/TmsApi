@@ -17,4 +17,12 @@ public interface ICourseService
 
 }
 
-public record CourseRecord(string Id, string Code, string Title, int Credits, DateTime CreatedAt);
+public interface ICachedCourseService
+{
+    Task<CourseResponseDto?> GetCourseAsync(string code, CancellationToken ct);
+    Task<List<CourseResponseDto>> GetAllCoursesAsync(CancellationToken ct);
+    Task InvalidateCourseCacheAsync(CancellationToken ct);
+}
+
+public record CourseRecord(string Id, string Code, string Title, int Credits, DateTime CreatedAt,
+    int MaxCapacity = 0, int EnrollmentCount = 0);

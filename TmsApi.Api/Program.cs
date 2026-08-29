@@ -1,3 +1,4 @@
+using System.Threading.Channels;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.RateLimiting;
 using Scalar.AspNetCore;
@@ -8,6 +9,11 @@ using TmsApi.Application.Interfaces;
 using TmsApi.Domain.Entities;
 using TmsApi.Infrastructure.Persistence;
 using TmsApi.Infrastructure.Services;
+using TmsApi.Infrastructure.Transcripts;
+using TmsApi.Infrastructure.Workers;
+using TmsApi.Application.Notifications;
+using TmsApi.Api.Hubs;
+using TmsApi.Api.Notifications;
 using TmsApi.Persistence;
 using TmsApi.Filters;
 using TmsApi.Middleware;
@@ -53,6 +59,16 @@ builder.Services.AddHybridCache(options =>
         LocalCacheExpiration = TimeSpan.FromMinutes(2)
     };
 });
+builder.Services.AddScoped<ICachedCourseService, CachedCourseService>();
+builder.Services.AddSingleton<ITranscriptStatusStore, InMemoryTranscriptStatusStore>();
+builder.Services.AddSingleton(Channel.CreateBounded<TmsApi.Application.Transcripts.TranscriptRequest>(
+    new BoundedChannelOptions(100)
+    {
+        FullMode = BoundedChannelFullMode.Wait
+    }));
+builder.Services.AddHostedService<TranscriptWorker>();
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<ITranscriptNotificationService, SignalRTranscriptNotificationService>();
 builder.Services.AddRateLimiter(RateLimiterConfiguration.Configure);
 builder.Services.AddControllers(options =>
 {
@@ -148,6 +164,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapHealthChecks("/health/live").DisableRateLimiting();
 app.MapHealthChecks("/health/ready").DisableRateLimiting();
+app.MapHub<TmsHub>("/hubs/tms");
 app.MapControllers();
 
 // app.MapGet("/api/assessments/results", ()=> Results.Ok(new

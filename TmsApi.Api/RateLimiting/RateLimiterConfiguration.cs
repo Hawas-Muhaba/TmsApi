@@ -1,4 +1,5 @@
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
 namespace TmsApi.Api.RateLimiting;
@@ -76,22 +77,36 @@ public static class RateLimiterConfiguration
     {
         var (partitionKey, tier) = ApiKeyResolver.Resolve(httpContext);
 
-        var (tokensPerPeriod, period) = tier switch
+        return tier switch
         {
-            ApiKeyTier.Free => (10, TimeSpan.FromSeconds(60)),      // 10 req/min
-            ApiKeyTier.Paid => (100, TimeSpan.FromSeconds(60)),     // 100 req/min
-            _ => (5, TimeSpan.FromSeconds(60))                      // 5 req/min (anonymous)
+            ApiKeyTier.Paid => RateLimitPartition.GetTokenBucketLimiter(
+                $"paid:{partitionKey}", _ => new TokenBucketRateLimiterOptions
+                {
+                    TokenLimit = 200,
+                    TokensPerPeriod = 100,
+                    ReplenishmentPeriod = TimeSpan.FromSeconds(10),
+                    QueueLimit = 0,
+                    AutoReplenishment = true
+                }),
+            ApiKeyTier.Free => RateLimitPartition.GetTokenBucketLimiter(
+                $"free:{partitionKey}", _ => new TokenBucketRateLimiterOptions
+                {
+                    TokenLimit = 30,
+                    TokensPerPeriod = 10,
+                    ReplenishmentPeriod = TimeSpan.FromSeconds(10),
+                    QueueLimit = 0,
+                    AutoReplenishment = true
+                }),
+            _ => RateLimitPartition.GetTokenBucketLimiter(
+                $"anon:{partitionKey}", _ => new TokenBucketRateLimiterOptions
+                {
+                    TokenLimit = 10,
+                    TokensPerPeriod = 5,
+                    ReplenishmentPeriod = TimeSpan.FromSeconds(10),
+                    QueueLimit = 0,
+                    AutoReplenishment = true
+                })
         };
-
-        return RateLimitPartition.GetSlidingWindowLimiter(
-            partitionKey,
-            _ => new SlidingWindowRateLimiterOptions
-            {
-                PermitLimit = tokensPerPeriod,
-                Window = period,
-                SegmentsPerWindow = 2,
-                AutoReplenishment = true
-            });
     }
 
     private static RateLimitPartition<string> CreateTranscriptPolicy(HttpContext httpContext)
@@ -121,12 +136,26 @@ public static class RateLimiterConfiguration
     {
         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
 
-        if (context.Lease.TryGetMetadata("RETRY_AFTER", out var retryAfter))
+        var retryAfter = "10";
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfterMetadata)
+            && retryAfterMetadata is TimeSpan retryAfterSpan)
         {
-            if (retryAfter is TimeSpan ts)
-                context.HttpContext.Response.Headers.RetryAfter = ts.TotalSeconds.ToString("F0");
+            retryAfter = Math.Max(1, (int)Math.Ceiling(retryAfterSpan.TotalSeconds)).ToString();
         }
 
-        return ValueTask.CompletedTask;
+        context.HttpContext.Response.Headers.RetryAfter = retryAfter;
+        return WriteRejectedResponseAsync(context.HttpContext, retryAfter, ct);
+    }
+
+    private static async ValueTask WriteRejectedResponseAsync(
+        HttpContext httpContext, string retryAfter, CancellationToken ct)
+    {
+        await httpContext.Response.WriteAsJsonAsync(new ProblemDetails
+        {
+            Title = "Rate limit exceeded",
+            Detail = $"Too many requests. Retry after {retryAfter} seconds.",
+            Status = StatusCodes.Status429TooManyRequests,
+            Type = "https://tms.local/errors/rate_limit_exceeded"
+        }, options: null, contentType: "application/problem+json", cancellationToken: ct);
     }
 }

@@ -1,0 +1,21 @@
+Tier-aware rate limiting evidence
+
+Configuration:
+- Anonymous: token bucket 10 tokens, 5 replenished every 10 seconds
+- Free: token bucket 30 tokens, 10 replenished every 10 seconds
+- Paid: token bucket 200 tokens, 100 replenished every 10 seconds
+- Transcripts: concurrency limit 5, queue limit 20
+- Health endpoints disable rate limiting
+
+Observed anonymous course burst:
+- 11 HTTP 200 responses and 4 HTTP 429 responses during the verification run
+- HTTP 429 Retry-After: 10
+- Content-Type: application/problem+json
+- Body type: https://tms.local/errors/rate_limit_exceeded
+
+Observed paid course burst:
+- 15 HTTP 200 responses with X-Api-Key: tms-paid-001
+
+Observed transcript burst:
+- 27 HTTP 202 responses and 3 HTTP 429 responses across 30 paid concurrent requests
+- The transcript action holds the named concurrency permit during its simulated work.

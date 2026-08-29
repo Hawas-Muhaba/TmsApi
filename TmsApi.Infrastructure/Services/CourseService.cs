@@ -42,7 +42,8 @@ public class CourseService(TmsDbContext context, ILogger<CourseService> logger):
     {
         var courses = await context.Courses.AsNoTracking().ToListAsync();
         var records = courses
-            .Select(c => new CourseRecord(c.Id.ToString(), c.Code, c.Title, 0, DateTime.UtcNow))
+            .Select(c => new CourseRecord(c.Id.ToString(), c.Code, c.Title, 0, DateTime.UtcNow,
+                c.MaxCapacity, c.Enrollments.Count))
             .ToList();
         return records;
     }

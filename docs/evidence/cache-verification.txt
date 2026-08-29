@@ -1,0 +1,17 @@
+HybridCache verification
+
+Endpoint: GET /api/courses?pageSize=20
+Required headers: X-Training-User: cache-verifier, X-Api-Version: 2.0
+
+Observed cold request:
+- HTTP 200
+- Cache MISS for v2:courses:all fetching from DB
+- One course query against the database
+- Retrieved 26 courses from database for v2:courses:all
+
+Observed warm requests:
+- HTTP 200
+- Cache HIT for v2:courses:all
+- No additional course database query
+
+The cache entry uses the v2:courses:all key and the courses tag. Course create and delete handlers invalidate the courses tag after successful writes.
